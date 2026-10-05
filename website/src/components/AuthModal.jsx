@@ -100,13 +100,13 @@ export default function AuthModal({ isOpen, onClose }) {
         const data = await loginUser(email, password);
         if (data && data.user) {
           login(data.user, data.token);
-          if (showToast) showToast('Logged in successfully!');
           onClose();
+        } else if (data && data._networkError) {
+          setError('Cannot reach the server. Please check your connection and try again.');
+        } else if (data && data._failed) {
+          setError(data.message || 'Invalid email or password. Please try again.');
         } else {
-          // Fallback mock login for preview
-          login({ name: email.split('@')[0] || 'Jane Doe', email, role: 'user' }, 'mock-jwt-token');
-          if (showToast) showToast('Logged in successfully!');
-          onClose();
+          setError('Invalid email or password. Please try again.');
         }
       } catch (err) {
         setError('A network error occurred. Please try again later.');

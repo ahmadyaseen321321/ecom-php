@@ -11,7 +11,7 @@ export default defineConfig({
     },
     proxy: {
       '/ecom_api': {
-        target: 'http://192.168.100.203',
+        target: 'http://localhost',
         changeOrigin: true,
         secure: false,
       }

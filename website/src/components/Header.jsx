@@ -215,7 +215,7 @@ export default function Header() {
                 >
                   {user ? (
                     <span className="user-initials">
-                      {user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                      {(user.full_name || user.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
                     </span>
                   ) : (
                     <User size={18} />

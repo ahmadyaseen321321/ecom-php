@@ -107,6 +107,9 @@ export const CartProvider = ({ children }) => {
       const savedUser = localStorage.getItem('user');
       if (savedUser) {
         const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.role === 'admin') {
+          return 'admin-dashboard';
+        }
         if (parsed && (parsed.role === 'seller' || parsed.is_seller == 1)) {
           return 'seller-dashboard';
         }
@@ -154,7 +157,12 @@ export const CartProvider = ({ children }) => {
   // Handle browser back button
   useEffect(() => {
     const handlePopState = (event) => {
+      const isAdmin  = user && user.role === 'admin';
       const isSeller = user && (user.role === 'seller' || user.is_seller == 1);
+      if (isAdmin) {
+        setCurrentPage('admin-dashboard');
+        return;
+      }
       if (isSeller) {
         setCurrentPage('seller-dashboard');
         return;
@@ -172,6 +180,7 @@ export const CartProvider = ({ children }) => {
 
   const navigateTo = (page, product = null) => {
     const isSeller = user && (user.role === 'seller' || user.is_seller == 1);
+    // Admin can freely navigate; sellers are locked to their dashboard
     const targetPage = isSeller ? 'seller-dashboard' : page;
 
     setCurrentPage(targetPage);
@@ -188,8 +197,12 @@ export const CartProvider = ({ children }) => {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
-        if (parsedUser && (parsedUser.role === 'seller' || parsedUser.is_seller == 1)) {
+        if (parsedUser && parsedUser.role === 'admin') {
+          setCurrentPage('admin-dashboard');
+        } else if (parsedUser && (parsedUser.role === 'seller' || parsedUser.is_seller == 1)) {
           setCurrentPage('seller-dashboard');
+        } else {
+          setCurrentPage('home');
         }
       } catch (e) {
         console.error('Error parsing stored user:', e);
@@ -201,9 +214,13 @@ export const CartProvider = ({ children }) => {
     setUser(userData);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
-    showToast(`Welcome back, ${userData.full_name}!`);
-    if (userData && (userData.role === 'seller' || userData.is_seller == 1)) {
+    showToast(`Welcome back, ${userData.full_name || userData.name || 'User'}!`);
+    if (userData && userData.role === 'admin') {
+      setCurrentPage('admin-dashboard');
+    } else if (userData && (userData.role === 'seller' || userData.is_seller == 1)) {
       setCurrentPage('seller-dashboard');
+    } else {
+      setCurrentPage('home');
     }
   };
 

@@ -99,10 +99,10 @@ export default function InfoModals() {
                 <>
                   <div className="profile-header-card">
                     <div className="profile-large-avatar">
-                      {user.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2)}
+                      {(user.full_name || user.name || 'U').split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2)}
                     </div>
                     <div className="profile-header-details">
-                      <h4>{user.full_name}</h4>
+                      <h4>{user.full_name || user.name}</h4>
                       <p>{user.email}</p>
                       <span className="gold-badge"><Sparkles size={12} /> Gold VIP Tier</span>
                     </div>
@@ -130,7 +130,7 @@ export default function InfoModals() {
                     <h5 className="group-heading">Personal Information</h5>
                     <div className="detail-row">
                       <span className="detail-label">Full Name</span>
-                      <span className="detail-value">{user.full_name}</span>
+                      <span className="detail-value">{user.full_name || user.name || '—'}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Email Address</span>

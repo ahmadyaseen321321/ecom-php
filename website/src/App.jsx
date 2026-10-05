@@ -22,6 +22,7 @@ import ShopPage from './components/ShopPage';
 import OrdersPage from './components/OrdersPage';
 import CheckoutPage from './components/CheckoutPage';
 import SellerDashboard from './components/SellerDashboard';
+import AdminDashboard from './components/AdminDashboard';
 import MessagesPage from './components/MessagesPage';
 import OrderSuccessPage from './components/OrderSuccessPage';
 import { CheckCircle } from 'lucide-react';
@@ -40,7 +41,7 @@ function MainLayout() {
         </div>
       )}
 
-      {currentPage !== 'seller-dashboard' && <Header />}
+      {currentPage !== 'seller-dashboard' && currentPage !== 'admin-dashboard' && <Header />}
 
       {currentPage === 'home' && (
         <main>
@@ -74,7 +75,9 @@ function MainLayout() {
 
       {currentPage === 'seller-dashboard' && <SellerDashboard />}
 
-      {currentPage !== 'seller-dashboard' && <Footer />}
+      {currentPage === 'admin-dashboard' && <AdminDashboard />}
+
+      {currentPage !== 'seller-dashboard' && currentPage !== 'admin-dashboard' && <Footer />}
 
       {/* Interactive Overlays */}
       <CartDrawer />

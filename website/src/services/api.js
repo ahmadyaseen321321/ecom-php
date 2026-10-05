@@ -200,15 +200,22 @@ export async function cancelOrderApi(orderId, reason = 'Changed my mind') {
 // POST /auth/login.php
 export async function loginUser(email, password) {
   const url = `${API_BASE_URL}/auth/login.php`;
+
+  // Abort after 8 seconds so the spinner never hangs forever
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   try {
     const response = await fetch(url, {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, password }),
     });
+    clearTimeout(timeoutId);
     const data = await response.json();
     console.log('[LOGIN] Status:', response.status, 'Response:', data);
 
@@ -216,10 +223,12 @@ export async function loginUser(email, password) {
       return data;
     }
     console.error('[LOGIN] Failed:', data.message || data);
-    return null;
+    return { _failed: true, message: data.message || 'Invalid credentials' };
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error('[LOGIN] Network Error:', error);
-    return null;
+    // Return a network-error marker so AuthModal can show a message
+    return { _networkError: true };
   }
 }
 
@@ -330,4 +339,94 @@ export async function deleteSellerProductApi(productId) {
   return apiFetch(`/api/products.php?id=${productId}`, {
     method: 'DELETE',
   });
+}
+
+
+// ─── Admin API Services ─────────────────────────────────────────
+
+// GET /api/admin/stats.php — platform-wide overview stats
+export async function fetchAdminStatsApi() {
+  return apiFetch('/api/admin/stats.php');
+}
+
+// GET /api/admin/users.php — all users (optional ?role=user|seller|admin)
+export async function fetchAdminUsersApi(role = '') {
+  const q = role ? `?role=${role}` : '';
+  return apiFetch(`/api/admin/users.php${q}`);
+}
+
+// PUT /api/admin/users.php — block/unblock or change role
+export async function updateAdminUserApi(userId, data) {
+  return apiFetch('/api/admin/users.php', {
+    method: 'PUT',
+    body: JSON.stringify({ user_id: userId, ...data }),
+  });
+}
+
+// DELETE /api/admin/users.php?id=X
+export async function deleteAdminUserApi(userId) {
+  return apiFetch(`/api/admin/users.php?id=${userId}`, { method: 'DELETE' });
+}
+
+// GET /api/admin/orders.php
+export async function fetchAdminOrdersApi(status = '', page = 1) {
+  const q = new URLSearchParams({ ...(status ? { status } : {}), page }).toString();
+  return apiFetch(`/api/admin/orders.php?${q}`);
+}
+
+// PUT /api/admin/orders.php — update order status
+export async function updateAdminOrderApi(orderId, status) {
+  return apiFetch('/api/admin/orders.php', {
+    method: 'PUT',
+    body: JSON.stringify({ order_id: orderId, status }),
+  });
+}
+
+// GET /api/admin/sellers.php — all seller applications / seller list
+export async function fetchAdminSellersApi() {
+  return apiFetch('/api/admin/sellers.php');
+}
+
+// PUT /api/admin/sellers.php — approve / reject seller
+export async function updateAdminSellerApi(sellerId, status) {
+  return apiFetch('/api/admin/sellers.php', {
+    method: 'PUT',
+    body: JSON.stringify({ seller_id: sellerId, status }),
+  });
+}
+
+// GET /api/admin/coupons.php
+export async function fetchAdminCouponsApi() {
+  return apiFetch('/api/admin/coupons.php');
+}
+
+// POST /api/admin/coupons.php
+export async function createAdminCouponApi(couponData) {
+  return apiFetch('/api/admin/coupons.php', {
+    method: 'POST',
+    body: JSON.stringify(couponData),
+  });
+}
+
+// DELETE /api/admin/coupons.php?id=X
+export async function deleteAdminCouponApi(couponId) {
+  return apiFetch(`/api/admin/coupons.php?id=${couponId}`, { method: 'DELETE' });
+}
+
+// GET /api/admin/categories.php
+export async function fetchAdminCategoriesApi() {
+  return apiFetch('/api/admin/categories.php');
+}
+
+// POST /api/admin/categories.php
+export async function createAdminCategoryApi(data) {
+  return apiFetch('/api/admin/categories.php', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// DELETE /api/admin/categories.php?id=X
+export async function deleteAdminCategoryApi(categoryId) {
+  return apiFetch(`/api/admin/categories.php?id=${categoryId}`, { method: 'DELETE' });
 }

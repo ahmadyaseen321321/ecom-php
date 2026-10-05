@@ -1,0 +1,179 @@
+.just-landed-section {
+  padding: 48px 0 64px;
+}
+
+.just-landed-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.just-landed-title {
+  font-size: 2.6rem;
+  color: var(--color-text-main);
+  margin-bottom: 6px;
+}
+
+.just-landed-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.carousel-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-main);
+  transition: var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.control-btn:hover {
+  background-color: var(--color-forest);
+  color: #FFFFFF;
+  border-color: var(--color-forest);
+  transform: scale(1.05);
+}
+
+.slider-container {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 24px;
+  scrollbar-width: none;
+}
+
+.slider-container::-webkit-scrollbar {
+  display: none;
+}
+
+.landed-card {
+  min-width: 268px;
+  max-width: 268px;
+  flex: 0 0 auto;
+  background: #FFFFFF;
+  border-radius: 18px;
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  transition: var(--transition-normal);
+}
+
+.landed-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+.landed-image-wrap {
+  position: relative;
+  height: 270px;
+  background: #F7F5F0;
+  overflow: hidden;
+}
+
+.landed-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.landed-card:hover .landed-img {
+  transform: scale(1.06);
+}
+
+.quick-view-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -40%);
+  opacity: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  color: var(--color-forest);
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-normal);
+}
+
+.landed-card:hover .quick-view-btn {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.landed-info {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.landed-category {
+  font-size: 0.7rem;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.landed-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landed-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.landed-price {
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--color-text-main);
+}
+
+.add-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-sage-tint);
+  color: var(--color-forest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.add-btn:hover {
+  background: var(--color-forest);
+  color: #FFFFFF;
+}
+
+.center-cta-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}

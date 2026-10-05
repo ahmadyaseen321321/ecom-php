@@ -1,0 +1,9 @@
+# ninja log v5
+15	148	8059115767519985	CMakeFiles/jni.dir/include/dart_api_dl.c.o	f84eb884e600cf2e
+8	234	8059115768292314	CMakeFiles/jni.dir/dartjni.c.o	f12a18014666fa30
+0	338	8059115769370440	CMakeFiles/jni.dir/third_party/global_jni_env.c.o	def9e7f9a1a5faff
+339	585	8059115771904697	D:/Bride_app/build/jni/intermediates/cxx/Debug/3o2i3y4n/obj/x86_64/libdartjni.so	4a67afa9868faf48
+11	316	8062487223496802	D:/Bride_app/build/jni/intermediates/cxx/Debug/3o2i3y4n/obj/x86_64/libdartjni.so	4a67afa9868faf48
+13	523	8063230868000631	D:/Bride_app/build/jni/intermediates/cxx/Debug/3o2i3y4n/obj/x86_64/libdartjni.so	4a67afa9868faf48
+10	250	8064088232899597	D:/Bride_app/build/jni/intermediates/cxx/Debug/3o2i3y4n/obj/x86_64/libdartjni.so	4a67afa9868faf48
+13	241	8075327160033513	D:/Bride_app/build/jni/intermediates/cxx/Debug/3o2i3y4n/obj/x86_64/libdartjni.so	4a67afa9868faf48

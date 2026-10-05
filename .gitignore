@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Build outputs
+build/
+**/build/
+.next/
+**/.next/
+dist/
+**/dist/
+out/
+**/.dart_tool/
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+service-account.json
+**/service-account.json
+google-services.json
+**/google-services.json
+
+# IDE & OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

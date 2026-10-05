@@ -1,0 +1,19 @@
+# ninja log v5
+30	282	8051131967423121	CMakeFiles/jni.dir/include/dart_api_dl.c.o	389b1d5a0a780bb7
+2	410	8051131968794847	CMakeFiles/jni.dir/dartjni.c.o	60fd79b32f59b023
+17	673	8051131971342446	CMakeFiles/jni.dir/third_party/global_jni_env.c.o	ce33bed6a5954990
+673	937	8051131974123211	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+9	450	8051990467668650	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+7	540	8052096998718595	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+9	410	8052127941799147	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+15	820	8052884922020661	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+12	494	8052916244763530	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+14	379	8052932527274216	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+13	460	8052962105868819	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+12	310	8053052351684598	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+26	966	8053655981413510	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+13	492	8053707240558556	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+11	410	8053719323828277	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+6	430	8057143072579428	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+43	990	8057150196111673	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8
+9	704	8057305804123297	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86/libdartjni.so	5ef343982f3baca8

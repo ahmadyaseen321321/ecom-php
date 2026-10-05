@@ -1,0 +1,228 @@
+/* SellerOrdersPage.css - Seller Orders Management Screen (`seller orders.png`) */
+.header-btn-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.export-csv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+
+.export-csv-btn:hover {
+  background: #f9fafb;
+}
+
+.print-labels-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: #283A2E;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s ease;
+}
+
+.print-labels-btn:hover {
+  opacity: 0.92;
+}
+
+.orders-filter-toolbar {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f3f4f6;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.orders-search-input-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+}
+
+.orders-search-input-wrap .search-icon {
+  position: absolute;
+  left: 14px;
+  color: #9ca3af;
+}
+
+.orders-search-input-wrap input {
+  width: 100%;
+  padding: 10px 16px 10px 38px;
+  background: #fafbfa;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  outline: none;
+  font-family: inherit;
+}
+
+.status-filter-pills-row {
+  display: flex;
+  gap: 8px;
+}
+
+.status-tab-pill {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.status-tab-pill.active {
+  background: #283A2E;
+  color: #ffffff;
+  border-color: #283A2E;
+}
+
+.seller-orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.seller-orders-table th {
+  padding: 14px 16px;
+  font-size: 0.725rem;
+  font-weight: 700;
+  color: #9ca3af;
+  border-bottom: 1px solid #f3f4f6;
+  letter-spacing: 0.04em;
+}
+
+.seller-orders-table td {
+  padding: 16px;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #f9fafb;
+  vertical-align: middle;
+}
+
+.order-id-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-prod-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f3f4f6;
+}
+
+.order-id-text {
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.875rem;
+}
+
+.customer-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.customer-avatar-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.customer-name-txt {
+  font-weight: 600;
+  color: #111827;
+}
+
+.date-cell {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.total-price-cell {
+  font-weight: 700;
+  color: #111827;
+}
+
+.s-status-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.s-status-badge.ready {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.s-status-badge.progress {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.s-status-badge.shipped {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.s-status-badge.delivered {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.table-action-icons-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.act-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.act-icon-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}

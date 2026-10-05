@@ -1,0 +1,357 @@
+/* ═══════════════════════════════════════════════════════════════
+   SELLER SHIPMENT PAGE — matches shipment screen.png
+   ═══════════════════════════════════════════════════════════════ */
+
+.seller-shipment-page {
+  padding: 0;
+}
+
+/* ─── Header ─── */
+.shipment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.shipment-header .page-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 6px 0;
+}
+
+.shipment-header .page-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.shipment-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: #283A2E;
+  color: #283A2E;
+}
+
+.print-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  background: #283A2E;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.print-all-btn:hover {
+  background: #1e2e24;
+  box-shadow: 0 4px 16px rgba(40, 58, 46, 0.25);
+}
+
+/* ─── Shipment Cards List ─── */
+.shipment-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.shipment-card {
+  display: flex;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.shipment-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border-color: #d1d5db;
+}
+
+.shipment-card.generating {
+  border-color: #e5e7eb;
+  opacity: 0.85;
+}
+
+/* ─── Left Info Section ─── */
+.shipment-card-info {
+  flex: 1;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.shipment-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.order-id-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.shipment-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.shipment-status-badge.ready {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.shipment-status-badge.pending {
+  background: #f9fafb;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.status-dot.ready {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
+}
+
+.spin-icon {
+  animation: spinAnim 1s linear infinite;
+}
+
+@keyframes spinAnim {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.customer-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.customer-address {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 18px 0;
+}
+
+.carrier-weight-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+}
+
+.info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+.info-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.info-value svg {
+  color: #6b7280;
+}
+
+/* ─── Right Preview + Buttons ─── */
+.shipment-card-right {
+  width: 220px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border-left: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+
+.label-preview-box {
+  width: 100%;
+  height: 140px;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.label-preview-box:hover {
+  border-color: #283A2E;
+}
+
+.label-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.zoom-icon-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(40, 58, 46, 0.35);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  border-radius: 10px;
+}
+
+.label-preview-box:hover .zoom-icon-overlay {
+  opacity: 1;
+}
+
+.label-preview-box.placeholder {
+  cursor: default;
+  background: #f9fafb;
+}
+
+.label-preview-box.placeholder:hover {
+  border-color: #e5e7eb;
+}
+
+.processing-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.processing-placeholder .doc-icon {
+  color: #d1d5db;
+}
+
+/* ─── Action Buttons ─── */
+.doc-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doc-action-btn:hover:not(.disabled) {
+  border-color: #283A2E;
+  color: #283A2E;
+  background: #f0fdf4;
+}
+
+.doc-action-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+
+/* ─── Fade-in animation ─── */
+.seller-shipment-page.animate-fade-in {
+  animation: shipFadeIn 0.35s ease forwards;
+}
+
+@keyframes shipFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .shipment-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .shipment-card {
+    flex-direction: column;
+  }
+
+  .shipment-card-right {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #f3f4f6;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .label-preview-box {
+    height: 120px;
+  }
+
+  .doc-action-btn {
+    flex: 1;
+    min-width: 140px;
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "3954769849",
+    "project_id": "ecomapp-753cf",
+    "storage_bucket": "ecomapp-753cf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:3954769849:android:e78f65a81f6cb794f40068",
+        "android_client_info": {
+          "package_name": "com.ahmad.ecomapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "3954769849-7doii0up9sgi9uu90jrpmb33gva2rhgb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ahmad.ecomapp",
+            "certificate_hash": "000ac9893b444514218d3bdec88d04c76e43e6bc"
+          }
+        },
+        {
+          "client_id": "3954769849-2vj7a4vrouev70fjre2g3m73jf1i1mg5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrRi3Qr1wtNBSWc8XzGVAfBH9RBMAGrYQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "3954769849-2vj7a4vrouev70fjre2g3m73jf1i1mg5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

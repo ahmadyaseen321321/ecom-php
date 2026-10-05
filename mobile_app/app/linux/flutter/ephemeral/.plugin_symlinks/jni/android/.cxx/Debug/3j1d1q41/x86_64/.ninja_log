@@ -1,0 +1,19 @@
+# ninja log v5
+20	264	8051131991706012	CMakeFiles/jni.dir/include/dart_api_dl.c.o	f84eb884e600cf2e
+0	379	8051131993078089	CMakeFiles/jni.dir/dartjni.c.o	f12a18014666fa30
+10	721	8051131996396163	CMakeFiles/jni.dir/third_party/global_jni_env.c.o	def9e7f9a1a5faff
+724	1095	8051132000363540	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+12	346	8051990472958703	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+16	847	8052097009358333	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+8	383	8052127948319097	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+14	828	8052884935443823	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+10	621	8052916253943555	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+12	400	8052932532594125	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+10	280	8052962110807545	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+19	391	8053052358134665	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+13	538	8053655993723466	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+11	438	8053707247118509	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+23	380	8053719330330500	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+14	406	8057143079198307	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+24	546	8057150206439801	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30
+24	725	8057305817591677	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/x86_64/libdartjni.so	9bb8b99c0ca44a30

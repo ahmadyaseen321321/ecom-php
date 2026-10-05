@@ -1,0 +1,11 @@
+# ninja log v5
+22	274	8051353793804956	CMakeFiles/jni.dir/include/dart_api_dl.c.o	50a69ca83f8fb825
+15	375	8051353794758571	CMakeFiles/jni.dir/dartjni.c.o	1fe52ba5804b9d39
+1	985	8051353800828238	CMakeFiles/jni.dir/third_party/global_jni_env.c.o	326f3b53f18a1246
+985	1195	8051353802950019	D:/synckaro/build/jni/intermediates/cxx/RelWithDebInfo/125d5d5n/obj/armeabi-v7a/libdartjni.so	32a64d16aea66399
+10	221	8051996549284725	D:/synckaro/build/jni/intermediates/cxx/RelWithDebInfo/125d5d5n/obj/armeabi-v7a/libdartjni.so	32a64d16aea66399
+14	182	8052105690873085	D:/synckaro/build/jni/intermediates/cxx/RelWithDebInfo/125d5d5n/obj/armeabi-v7a/libdartjni.so	32a64d16aea66399
+5	325	8052185379900037	D:/synckaro/build/jni/intermediates/cxx/RelWithDebInfo/125d5d5n/obj/armeabi-v7a/libdartjni.so	32a64d16aea66399
+10	204	8053072511218573	D:/synckaro/build/jni/intermediates/cxx/RelWithDebInfo/125d5d5n/obj/armeabi-v7a/libdartjni.so	32a64d16aea66399
+3	268	8053823775577890	D:/synckaro/build/jni/intermediates/cxx/RelWithDebInfo/125d5d5n/obj/armeabi-v7a/libdartjni.so	32a64d16aea66399
+4	264	8057998773690982	D:/synckaro/build/jni/intermediates/cxx/RelWithDebInfo/125d5d5n/obj/armeabi-v7a/libdartjni.so	32a64d16aea66399

@@ -1,0 +1,19 @@
+# ninja log v5
+20	1164	8051131911313551	CMakeFiles/jni.dir/include/dart_api_dl.c.o	24701710471b8c3f
+1	2036	8051131920080028	CMakeFiles/jni.dir/dartjni.c.o	7b1fc413c1352683
+10	2188	8051131921614530	CMakeFiles/jni.dir/third_party/global_jni_env.c.o	c14250eaf8c0e14e
+2189	2406	8051131923853915	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+30	405	8051990457368698	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+33	694	8052096984638848	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+40	554	8052127928849045	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+56	850	8052884895790258	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+56	619	8052916230523527	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+28	404	8052932515804161	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+21	403	8052962089049534	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+26	315	8053052341284609	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+61	1214	8053655953263398	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+96	466	8053707224198520	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+85	429	8053719311213423	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+50	646	8057143058721713	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+61	792	8057150123880445	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49
+48	925	8057305783466419	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/arm64-v8a/libdartjni.so	c93dab69e76a1d49

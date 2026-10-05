@@ -1,0 +1,19 @@
+# ninja log v5
+32	299	8051131941989338	CMakeFiles/jni.dir/include/dart_api_dl.c.o	9a5942ad97167894
+13	462	8051131943675620	CMakeFiles/jni.dir/dartjni.c.o	93ce67af07e0e1e9
+1	655	8051131945632875	CMakeFiles/jni.dir/third_party/global_jni_env.c.o	8b884ed0dde868ef
+656	864	8051131947812994	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+11	292	8051990461638678	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+8	412	8052096991107613	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+11	337	8052127935459054	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+15	699	8052884909848365	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+10	510	8052916237753546	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+10	367	8052932521334181	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+12	448	8052962098623204	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+12	321	8053052346324603	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+14	898	8053655966923429	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+15	677	8053707233098554	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+16	326	8053719317035929	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+9	399	8057143066469454	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+23	621	8057150179666992	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6
+13	574	8057305794214380	D:/synckaro/build/jni/intermediates/cxx/Debug/3j1d1q41/obj/armeabi-v7a/libdartjni.so	dde338dba170c8e6

@@ -3,26 +3,25 @@
 .auth-modal-overlay {
   position: fixed !important;
   inset: 0 !important;
-  background-color: #f9fbf9 !important;
+  background-color: #ffffff !important;
   z-index: 999999 !important;
-  overflow-y: auto;
+  overflow-y: auto !important;
   display: flex;
   flex-direction: column;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   color: #1a202c;
 }
 
-/* Sticky Top Navigation Header */
+/* Top Navigation Header (Relative so it naturally scrolls on small screens) */
 .auth-screen-header {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 48px;
   background: #ffffff;
   border-bottom: 1px solid #f0f2f1;
+  flex-shrink: 0;
 }
 
 .auth-header-logo {
@@ -67,42 +66,25 @@
   color: #2D4B3E;
 }
 
-.auth-close-btn {
-  background: #f4f6f5;
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #4a5568;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.auth-close-btn:hover {
-  background: #e2e8f0;
-  color: #1a202c;
-}
-
 /* Main Split-Screen Container */
 .auth-split-layout {
   display: flex;
-  flex: 1;
+  flex: 1 0 auto;
+  width: 100%;
   min-height: calc(100vh - 120px);
 }
 
 /* Left Hero Visual Panel */
 .auth-visual-side {
-  width: 48%;
+  width: 50%;
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 48px;
+  padding: 44px;
   overflow: hidden;
   background-color: #2a3d34;
+  min-height: 520px;
 }
 
 .auth-visual-image-wrapper {
@@ -138,17 +120,17 @@
 }
 
 .auth-visual-content h1 {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   color: #ffffff;
 }
 
 .auth-visual-content p {
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.55;
   opacity: 0.92;
   font-weight: 400;
 }
@@ -160,9 +142,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 32px;
+  padding: 24px 32px;
   background: #ffffff;
   position: relative;
+  overflow: visible;
 }
 
 /* Brand header in right side content */
@@ -170,7 +153,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .auth-content-brand .brand-leaf-icon {
@@ -178,7 +162,7 @@
 }
 
 .auth-content-brand .brand-title {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #1a202c;
@@ -187,60 +171,62 @@
 /* Layout variants: Login vs Card Boxes */
 .auth-card-content {
   width: 100%;
-  max-width: 420px;
+  max-width: 430px;
+  margin: auto 0;
 }
 
 .auth-card-box {
   width: 100%;
-  max-width: 460px;
+  max-width: 480px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 32px 36px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+  border-radius: 18px;
+  padding: 26px 32px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  margin: auto 0;
 }
 
 .auth-header {
   text-align: left;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .auth-header h2 {
-  font-size: 1.75rem;
+  font-size: 1.55rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #111827;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .auth-header p {
-  font-size: 0.925rem;
+  font-size: 0.875rem;
   color: #6b7280;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 .auth-error {
   background-color: #fef2f2;
   color: #991b1b;
   border: 1px solid #fecaca;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 8px;
-  font-size: 0.85rem;
+  font-size: 0.825rem;
   font-weight: 500;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 /* Form inputs & structure */
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .label-with-action {
@@ -252,24 +238,28 @@
 .name-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 12px;
 }
 
-.input-with-icon {
+.auth-modal-overlay .input-with-icon {
   position: relative;
   display: flex;
   align-items: center;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
-.input-with-icon .input-icon {
+.auth-modal-overlay .input-with-icon .input-icon {
   position: absolute;
-  left: 14px;
+  left: 12px;
   color: #9ca3af;
   pointer-events: none;
 }
 
-.input-with-icon input {
-  padding-left: 42px !important;
+.auth-modal-overlay .input-with-icon input {
+  padding-left: 38px !important;
 }
 
 .form-group input[type="text"],
@@ -277,15 +267,16 @@
 .form-group input[type="tel"],
 .form-group input[type="password"] {
   width: 100%;
-  padding: 11px 14px;
+  padding: 9px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-family: inherit;
   outline: none;
   background: #f9fafb;
   color: #111827;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .form-group input:focus {
@@ -303,28 +294,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .remember-me-label {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: #4b5563;
   cursor: pointer;
 }
 
 .stitch-checkbox {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   accent-color: #2D4B3E;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .forgot-password-link {
-  font-size: 0.85rem;
+  font-size: 0.825rem;
   font-weight: 500;
   color: #374151;
   text-decoration: none;
@@ -339,23 +330,23 @@
 .auth-checkbox-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 20px;
-  font-size: 0.825rem;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 0.78rem;
   color: #4b5563;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 /* Primary Action Buttons */
 .auth-submit-btn {
   width: 100%;
-  padding: 13px 20px;
+  padding: 11px 18px;
   background-color: #2D4B3E;
   color: #ffffff;
   border: none;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-family: inherit;
   cursor: pointer;
   display: flex;
@@ -363,7 +354,7 @@
   justify-content: center;
   gap: 8px;
   transition: all 0.2s ease;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .auth-submit-btn:hover:not(:disabled) {
@@ -381,9 +372,9 @@
   display: flex;
   align-items: center;
   text-align: center;
-  margin: 22px 0;
+  margin: 16px 0;
   color: #9ca3af;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .auth-divider::before,
@@ -394,15 +385,15 @@
 }
 
 .auth-divider span {
-  padding: 0 12px;
+  padding: 0 10px;
 }
 
 /* Social Buttons */
 .social-buttons-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .social-btn {
@@ -410,11 +401,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: #374151;
   font-family: inherit;
@@ -428,50 +419,136 @@
 }
 
 .social-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Bottom Links & Footer */
 .auth-switch {
   text-align: center;
-  margin-top: 20px;
-  font-size: 0.875rem;
+  margin-top: 14px;
+  font-size: 0.825rem;
   color: #6b7280;
 }
 
 .auth-card-footer-link {
   text-align: center;
-  margin-top: 16px;
-  font-size: 0.875rem;
+  margin-top: 12px;
+  font-size: 0.825rem;
   color: #6b7280;
 }
 
 .switch-link-btn {
   background: none;
   border: none;
-  color: #111827;
-  font-weight: 600;
+  color: #2D4B3E;
+  font-weight: 700;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0;
   font-family: inherit;
-  font-size: 0.875rem;
-  transition: color 0.2s ease;
+  font-size: inherit;
+  text-decoration: underline;
 }
 
 .switch-link-btn.highlight {
   color: #2D4B3E;
 }
 
-.switch-link-btn:hover {
-  text-decoration: underline;
+/* ============================================================
+   SPECIFIC BALANCED RULES FOR SIGNUP LAYOUT
+   ============================================================ */
+.signup-layout {
+  padding: 26px 32px !important;
+  max-width: 480px !important;
 }
 
-.switch-link-btn.muted {
-  color: #4b5563;
+.signup-layout .auth-header {
+  margin-bottom: 16px;
 }
 
-/* OTP Specific Styles */
+.signup-layout .auth-header h2 {
+  font-size: 1.55rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.signup-layout .auth-header p {
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.signup-layout .form-group {
+  margin-bottom: 11px;
+}
+
+.signup-layout .form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.signup-layout .name-row {
+  gap: 12px;
+}
+
+.signup-layout .form-group input {
+  padding: 9px 12px;
+  font-size: 0.88rem;
+  border-radius: 8px;
+}
+
+.signup-layout .input-with-icon input {
+  padding-left: 36px !important;
+}
+
+.signup-layout .input-with-icon .input-icon {
+  left: 11px;
+  width: 16px;
+  height: 16px;
+}
+
+.signup-layout .auth-checkbox-row {
+  margin: 10px 0 14px;
+  font-size: 0.78rem;
+  gap: 8px;
+}
+
+.signup-layout .auth-checkbox-row label {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.signup-layout .auth-submit-btn {
+  padding: 11px 18px;
+  font-size: 0.92rem;
+  margin-top: 4px;
+  border-radius: 8px;
+}
+
+.signup-layout .auth-divider {
+  margin: 14px 0;
+  font-size: 0.8rem;
+}
+
+.signup-layout .social-buttons-row {
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.signup-layout .social-btn {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+
+.signup-layout .auth-card-footer-link {
+  margin-top: 10px;
+  font-size: 0.84rem;
+}
+
+/* ============================================================
+   OTP Screen Styling
+   ============================================================ */
 .otp-layout {
   text-align: center;
 }
@@ -484,15 +561,14 @@
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin: 24px 0;
+  margin: 24px 0 20px;
 }
 
 .otp-digit-input {
-  width: 48px;
-  height: 52px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 8px;
-  background: #f9fafb;
+  width: 44px;
+  height: 50px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
   font-size: 1.3rem;
   font-weight: 700;
   text-align: center;
@@ -513,8 +589,8 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-bottom: 24px;
-  font-size: 0.85rem;
+  margin-bottom: 20px;
+  font-size: 0.825rem;
   color: #6b7280;
 }
 
@@ -537,19 +613,20 @@
 }
 
 .otp-back-link {
-  margin-top: 18px;
+  margin-top: 14px;
   text-align: center;
 }
 
 /* Footer bottom bar */
 .auth-screen-footer {
   width: 100%;
-  padding: 16px 48px;
+  padding: 14px 48px;
   text-align: center;
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   color: #9ca3af;
   border-top: 1px solid #f0f2f1;
   background: #ffffff;
+  flex-shrink: 0;
 }
 
 /* Responsive adjustments */
@@ -561,14 +638,14 @@
     padding: 14px 20px;
   }
   .auth-form-side {
-    padding: 24px 16px;
+    padding: 20px 16px;
   }
   .auth-card-box {
-    padding: 24px 20px;
+    padding: 20px 16px;
   }
   .otp-digit-input {
-    width: 40px;
-    height: 46px;
+    width: 38px;
+    height: 44px;
     font-size: 1.1rem;
   }
 }

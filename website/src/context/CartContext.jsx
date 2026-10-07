@@ -81,7 +81,21 @@ export const CartProvider = ({ children }) => {
   const [toastMessage, setToastMessage] = useState(null);
   const [user, setUser] = useState(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login'); // 'login' | 'signup'
+  const [isLoginRequiredOpen, setIsLoginRequiredOpen] = useState(false);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+
+  const openLoginModal = () => {
+    setIsLoginRequiredOpen(false);
+    setAuthModalMode('login');
+    setIsAuthModalOpen(true);
+  };
+
+  const openSignupModal = () => {
+    setIsLoginRequiredOpen(false);
+    setAuthModalMode('signup');
+    setIsAuthModalOpen(true);
+  };
 
   // ─── Dark Mode ─────────────────────────────────────────
   const [darkMode, setDarkMode] = useState(() => {
@@ -241,6 +255,10 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (product, quantity = 1) => {
+    if (!user) {
+      setIsLoginRequiredOpen(true);
+      return false;
+    }
     setCart((prev) => {
       const existingIndex = prev.findIndex((item) => item.id === product.id);
       if (existingIndex > -1) {
@@ -251,6 +269,7 @@ export const CartProvider = ({ children }) => {
       return [...prev, { ...product, quantity }];
     });
     showToast(`Added "${product.name}" to your cart`);
+    return true;
   };
 
   const removeFromCart = (productId) => {
@@ -321,6 +340,12 @@ export const CartProvider = ({ children }) => {
         user,
         isAuthModalOpen,
         setIsAuthModalOpen,
+        authModalMode,
+        setAuthModalMode,
+        isLoginRequiredOpen,
+        setIsLoginRequiredOpen,
+        openLoginModal,
+        openSignupModal,
         isSideDrawerOpen,
         setIsSideDrawerOpen,
         activeInfoModal,

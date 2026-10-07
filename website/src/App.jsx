@@ -25,11 +25,28 @@ import SellerDashboard from './components/SellerDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import MessagesPage from './components/MessagesPage';
 import OrderSuccessPage from './components/OrderSuccessPage';
+import AboutPage from './components/AboutPage';
+import ContactPage from './components/ContactPage';
+import NovanestNavHeader from './components/NovanestNavHeader';
+import ProfileSettingsPage from './components/ProfileSettingsPage';
+import LoginRequiredModal from './components/LoginRequiredModal';
 import { CheckCircle } from 'lucide-react';
 import './App.css';
 
 function MainLayout() {
-  const { toastMessage, isAuthModalOpen, setIsAuthModalOpen, currentPage } = useCart();
+  const {
+    toastMessage,
+    isAuthModalOpen,
+    setIsAuthModalOpen,
+    authModalMode,
+    isLoginRequiredOpen,
+    setIsLoginRequiredOpen,
+    openLoginModal,
+    openSignupModal,
+    currentPage
+  } = useCart();
+
+  const isNovanestStaticPage = currentPage === 'about' || currentPage === 'contact';
 
   return (
     <div className="app-container">
@@ -41,7 +58,12 @@ function MainLayout() {
         </div>
       )}
 
-      {currentPage !== 'seller-dashboard' && currentPage !== 'admin-dashboard' && <Header />}
+      {/* Top Header */}
+      {isNovanestStaticPage ? (
+        <NovanestNavHeader />
+      ) : (
+        currentPage !== 'seller-dashboard' && currentPage !== 'admin-dashboard' && <Header />
+      )}
 
       {currentPage === 'home' && (
         <main>
@@ -69,6 +91,14 @@ function MainLayout() {
 
       {currentPage === 'messages' && <MessagesPage />}
 
+      {currentPage === 'about' && <AboutPage />}
+
+      {currentPage === 'contact' && <ContactPage />}
+
+      {currentPage === 'profile' && <ProfileSettingsPage initialTab="profile" />}
+
+      {currentPage === 'settings' && <ProfileSettingsPage initialTab="settings" />}
+
       {currentPage === 'checkout' && <CheckoutPage />}
 
       {currentPage === 'order-success' && <OrderSuccessPage />}
@@ -77,14 +107,21 @@ function MainLayout() {
 
       {currentPage === 'admin-dashboard' && <AdminDashboard />}
 
-      {currentPage !== 'seller-dashboard' && currentPage !== 'admin-dashboard' && <Footer />}
+      {currentPage !== 'seller-dashboard' && currentPage !== 'admin-dashboard' && currentPage !== 'messages' && <Footer />}
 
       {/* Interactive Overlays */}
       <CartDrawer />
       <SideDrawer />
       <QuickViewModal />
+      <LoginRequiredModal
+        isOpen={isLoginRequiredOpen}
+        onClose={() => setIsLoginRequiredOpen(false)}
+        onLoginClick={openLoginModal}
+        onSignupClick={openSignupModal}
+      />
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
         onClose={() => setIsAuthModalOpen(false)}
       />
       <InfoModals />

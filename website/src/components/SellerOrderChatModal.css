@@ -1,0 +1,812 @@
+/* Seller Order Chat Modal CSS */
+:root {
+  --seller-dark-green: #1e3a2f;
+  --seller-accent-green: #16a34a;
+  --seller-chat-bg: #f8fafc;
+  --seller-chat-border: #e2e8f0;
+}
+
+.order-chat-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+}
+
+.order-chat-modal-container {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 1140px;
+  height: 88vh;
+  max-height: 820px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ─── 1. TOP BANNER (ORDER DETAILS) ─── */
+.order-chat-top-banner {
+  background: var(--seller-dark-green);
+  color: #ffffff;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.banner-order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-number-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+
+.chat-order-status-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.chat-order-status-pill.ready-to-ship,
+.chat-order-status-pill.ready {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.chat-order-status-pill.delivered {
+  background: #059669;
+  color: #ffffff;
+}
+
+.chat-order-status-pill.shipped {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.chat-order-status-pill.in-progress {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.meta-details-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.meta-item.bold-val {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.meta-item.summary-txt {
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.meta-sep {
+  opacity: 0.4;
+}
+
+.banner-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-banner-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.btn-banner-action:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.btn-close-chat {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-close-chat:hover {
+  background: rgba(239, 68, 68, 0.8);
+  transform: rotate(90deg);
+}
+
+/* ─── 2. SPLIT LAYOUT ─── */
+.order-chat-main-split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  min-height: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .order-chat-main-split {
+    grid-template-columns: 1fr;
+  }
+  .buyer-history-panel {
+    display: none;
+  }
+}
+
+/* ─── 3. LEFT CHATBOX ─── */
+.chatbox-conversation-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--seller-chat-border);
+  background: #ffffff;
+}
+
+.buyer-chat-header-bar {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--seller-chat-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+}
+
+.buyer-profile-flex {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.buyer-avatar-bubble {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.online-indicator-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
+  background: #22c55e;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+}
+
+.buyer-name-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.buyer-header-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.buyer-sub-status {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.online-green {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.buyer-badge-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #ecfdf5;
+  color: #059669;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+/* Chat Messages Scroll */
+.chatbox-messages-scroll {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #f8fafc;
+}
+
+.chat-date-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 12px 0;
+}
+
+.chat-date-divider span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  background: #ffffff;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.chat-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 60px 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+/* Message Rows */
+.chat-message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 80%;
+}
+
+.chat-message-row.from-buyer {
+  align-self: flex-start;
+}
+
+.chat-message-row.from-seller {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.msg-buyer-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.msg-bubble-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.from-seller .msg-bubble-wrapper {
+  align-items: flex-end;
+}
+
+.from-buyer .msg-bubble-wrapper {
+  align-items: flex-start;
+}
+
+.msg-bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.seller-bubble {
+  background: var(--seller-dark-green);
+  color: #ffffff;
+  border-bottom-right-radius: 3px;
+  box-shadow: 0 2px 6px rgba(30, 58, 47, 0.15);
+}
+
+.buyer-bubble {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  border-bottom-left-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.msg-text {
+  margin: 0;
+}
+
+.msg-attachment-img {
+  margin-top: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 220px;
+}
+
+.msg-attachment-img img {
+  width: 100%;
+  display: block;
+}
+
+.msg-time-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  padding: 0 2px;
+}
+
+.msg-delivered-icon {
+  color: #16a34a;
+}
+
+/* Quick replies row */
+.chat-quick-replies-row {
+  padding: 8px 16px;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-hint-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.quick-chips-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.quick-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-chip-btn {
+  white-space: nowrap;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  font-size: 0.75rem;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.quick-chip-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Chat Input Footer */
+.chatbox-input-footer {
+  padding: 12px 16px 16px 16px;
+  background: #ffffff;
+  border-top: 1px solid var(--seller-chat-border);
+}
+
+.chat-input-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 6px 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chat-input-box:focus-within {
+  border-color: var(--seller-dark-green);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(30, 58, 47, 0.08);
+}
+
+.input-tool-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.input-tool-btn:hover {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.chat-text-input-field {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.88rem;
+  color: #0f172a;
+  font-family: inherit;
+  padding: 4px 6px;
+}
+
+.btn-send-message {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--seller-dark-green);
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-send-message:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: scale(1.04);
+}
+
+.btn-send-message:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ─── 4. RIGHT BUYER PROFILE & HISTORY ─── */
+.buyer-history-panel {
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  overflow-y: auto;
+  border-left: 1px solid var(--seller-chat-border);
+}
+
+/* Buyer Card */
+.buyer-card-block {
+  padding: 20px;
+  border-bottom: 1px solid var(--seller-chat-border);
+  background: #ffffff;
+}
+
+.buyer-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.buyer-large-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 800;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.buyer-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.buyer-name-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.buyer-tier-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+.buyer-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+.contact-icon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.contact-val {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.buyer-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.b-stat-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.b-stat-lbl {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+
+.b-stat-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.b-stat-val.text-green {
+  color: #15803d;
+}
+
+/* History Section */
+.buyer-history-section {
+  padding: 16px 20px 20px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.history-title-flex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.history-count-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.history-orders-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.history-order-item-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-order-item-card:hover {
+  border-color: var(--seller-dark-green);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.history-order-item-card.active-current-order {
+  border-color: var(--seller-dark-green);
+  background: rgba(30, 58, 47, 0.04);
+  cursor: default;
+}
+
+.history-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-id-flex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+
+.current-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--seller-dark-green);
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.history-price {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.history-card-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.history-date {
+  color: #64748b;
+}
+
+.history-status-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.history-status-pill.ready-to-ship,
+.history-status-pill.ready {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.history-status-pill.delivered {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.history-status-pill.shipped {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.history-status-pill.in-progress {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.history-card-action-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--seller-dark-green);
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+.empty-history-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px 12px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-align: center;
+}

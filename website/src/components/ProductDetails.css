@@ -6,6 +6,15 @@
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   color: #111827;
   padding-top: 24px;
+  width: 100%;
+}
+
+.product-details-page-wrapper .container {
+  max-width: 1540px;
+  width: 100%;
+  padding: 0 40px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .details-breadcrumb-bar {
@@ -14,7 +23,7 @@
   gap: 8px;
   font-size: 0.85rem;
   color: #6b7280;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .details-breadcrumb-bar button {
@@ -43,38 +52,42 @@
 /* Main Showcase Grid */
 .product-showcase-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 48px;
+  grid-template-columns: minmax(460px, 1.1fr) 1fr;
+  gap: 60px;
   align-items: start;
-  margin-bottom: 72px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto 56px auto;
 }
 
 /* Gallery Column */
 .gallery-column {
   display: flex;
-  gap: 20px;
+  gap: 16px;
+  width: 100%;
 }
 
 .vertical-thumbnails {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .thumb-box {
-  width: 72px;
-  height: 72px;
-  border-radius: 8px;
+  width: 62px;
+  height: 62px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid #e5e7eb;
+  border: 1.5px solid #e5e7eb;
   background: #ffffff;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .thumb-box.active {
   border-color: #758A60;
-  box-shadow: 0 0 0 1px #758A60;
+  box-shadow: 0 0 0 1.5px #758A60;
 }
 
 .thumb-box img {
@@ -85,40 +98,46 @@
 
 .main-display-box {
   flex: 1;
-  height: 580px;
-  background-color: #ffffff;
-  border-radius: 12px;
+  min-height: 480px;
+  height: 520px;
+  background-color: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
 }
 
 .main-display-box img {
-  max-width: 90%;
-  max-height: 90%;
+  max-width: 95%;
+  max-height: 95%;
   object-fit: contain;
+  transition: transform 0.2s ease;
 }
 
 /* Info Column */
 .details-info-column {
   display: flex;
   flex-direction: column;
+  max-width: 580px;
+  width: 100%;
 }
 
 .product-heading {
-  font-size: 2.25rem;
+  font-size: 1.85rem;
   font-weight: 800;
   color: #111827;
   letter-spacing: -0.02em;
-  margin: 0 0 10px 0;
+  margin: 0 0 8px 0;
 }
 
 .rating-summary-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .stars-flex {
@@ -127,60 +146,61 @@
 }
 
 .reviews-text {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #6b7280;
 }
 
 .product-price-tag {
-  font-size: 1.85rem;
-  font-weight: 700;
+  font-size: 1.45rem;
+  font-weight: 800;
   color: #758A60;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .description-block {
-  margin-bottom: 28px;
+  margin-bottom: 18px;
 }
 
 .description-block h3 {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   color: #374151;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 }
 
 .description-block p {
-  font-size: 0.95rem;
-  line-height: 1.6;
+  font-size: 0.88rem;
+  line-height: 1.5;
   color: #4b5563;
   margin: 0;
 }
 
 /* Selector blocks */
 .selector-block {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .selector-block label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   color: #374151;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .label-with-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  max-width: 480px;
 }
 
 .size-guide-btn {
   background: none;
   border: none;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #6b7280;
   cursor: pointer;
   text-decoration: underline;
@@ -189,12 +209,12 @@
 
 .color-dots-flex {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .color-dot-btn {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
@@ -207,28 +227,34 @@
 }
 
 .size-buttons-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .size-square-btn {
-  padding: 12px 0;
+  min-width: 46px;
+  height: 38px;
+  padding: 0 14px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #374151;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
 .size-square-btn.active {
   border-color: #758A60;
   background: #F4F7F2;
   color: #758A60;
+  font-weight: 700;
 }
 
 /* Purchase Buttons Stack */
@@ -236,34 +262,39 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 32px;
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 24px;
 }
 
 .buy-now-btn {
   width: 100%;
-  padding: 14px;
+  height: 46px;
+  padding: 0 16px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 700;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
   color: #111827;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .buy-now-btn:hover {
   background: #f9fafb;
+  border-color: #d1d5db;
 }
 
 .add-to-cart-green-btn {
   width: 100%;
-  padding: 14px;
+  height: 46px;
+  padding: 0 16px;
   background: #758A60;
   border: none;
-  border-radius: 8px;
-  font-size: 0.95rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #ffffff;
   cursor: pointer;
@@ -272,7 +303,7 @@
   justify-content: center;
   gap: 8px;
   font-family: inherit;
-  transition: background 0.2s ease;
+  transition: background 0.15s ease;
 }
 
 .add-to-cart-green-btn:hover {
@@ -317,8 +348,8 @@
 
 .reviews-split-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 48px;
+  grid-template-columns: 360px 1fr;
+  gap: 56px;
   align-items: start;
 }
 

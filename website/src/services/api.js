@@ -4,13 +4,32 @@
 const isDev = import.meta.env.DEV;
 const API_BASE_URL = isDev ? '/ecom_api' : 'http://192.168.100.203/ecom_api';
 
-// Build a full image URL from relative paths stored in DB
+// Build a full image URL from relative paths stored in DB or public assets
 export function getImageUrl(relativePath) {
   if (!relativePath) return '/hero_lifestyle.png'; // fallback
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
     return relativePath;
   }
   const cleanPath = relativePath.replace(/^\//, '');
+
+  // Local frontend public assets served by Vite directly from /public
+  const publicAssets = [
+    'hero_lifestyle.png',
+    'midseason_plant.png',
+    'seasonal_leather.png',
+    'seasonal_serum.png',
+    'favicon.svg',
+    'icons.svg'
+  ];
+  if (publicAssets.includes(cleanPath)) {
+    return `/${cleanPath}`;
+  }
+
+  // If path already starts with uploads/
+  if (cleanPath.startsWith('uploads/')) {
+    return `${API_BASE_URL}/${cleanPath}`;
+  }
+
   return `${API_BASE_URL}/${cleanPath}`;
 }
 
@@ -341,6 +360,21 @@ export async function deleteSellerProductApi(productId) {
   });
 }
 
+// PUT /api/products.php?id=X (Update Product)
+export async function updateSellerProductApi(productId, productData) {
+  return apiFetch(`/api/products.php?id=${productId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ id: productId, ...productData }),
+  });
+}
+
+// PUT /api/products.php?id=X (Toggle product status active/inactive)
+export async function toggleProductStatusApi(productId, status) {
+  return apiFetch(`/api/products.php?id=${productId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ id: productId, status }),
+  });
+}
 
 // ─── Admin API Services ─────────────────────────────────────────
 
@@ -430,3 +464,48 @@ export async function createAdminCategoryApi(data) {
 export async function deleteAdminCategoryApi(categoryId) {
   return apiFetch(`/api/admin/categories.php?id=${categoryId}`, { method: 'DELETE' });
 }
+
+// ─── Chat & Messaging API ───────────────────────────────────────
+
+// GET /api/chat.php — Fetch recent conversations
+export async function fetchConversationsApi() {
+  return apiFetch('/api/chat.php');
+}
+
+// GET /api/chat.php?order_id=X — Fetch messages for an order
+export async function fetchOrderChatApi(orderId) {
+  return apiFetch(`/api/chat.php?order_id=${encodeURIComponent(orderId)}`);
+}
+
+// POST /api/chat.php — Send message
+export async function sendOrderChatApi(orderId, message, senderType = 'seller') {
+  return apiFetch('/api/chat.php', {
+    method: 'POST',
+    body: JSON.stringify({ order_id: orderId, message, sender_type: senderType }),
+  });
+}
+
+// ─── Addresses API ─────────────────────────────────────────────
+
+// GET /api/address.php
+export async function fetchAddressesApi() {
+  return apiFetch('/api/address.php');
+}
+
+// POST /api/address.php
+export async function addAddressApi(addressData) {
+  return apiFetch('/api/address.php', {
+    method: 'POST',
+    body: JSON.stringify(addressData),
+  });
+}
+
+// DELETE /api/address.php
+export async function deleteAddressApi(addressId) {
+  return apiFetch('/api/address.php', {
+    method: 'DELETE',
+    body: JSON.stringify({ id: addressId }),
+  });
+}
+
+

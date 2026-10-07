@@ -228,8 +228,10 @@ export default function ProductDetails() {
               <button
                 className="buy-now-btn"
                 onClick={() => {
-                  addToCart(product);
-                  navigateTo('cart');
+                  const success = addToCart(product);
+                  if (success) {
+                    navigateTo('cart');
+                  }
                 }}
               >
                 Buy now
@@ -376,46 +378,6 @@ export default function ProductDetails() {
           )}
         </section>
       </div>
-
-      {/* Footer matching product details mockup */}
-      <footer className="product-details-footer">
-        <div className="container">
-          <div className="footer-cols-grid">
-            <div className="footer-brand-col">
-              <h3>mystore</h3>
-              <p>Sustainable minimalist apparel for the modern world. Quality that lasts generations.</p>
-            </div>
-
-            <div className="footer-links-col">
-              <h4>Shop</h4>
-              <a href="#">New Arrivals</a>
-              <a href="#">Best Sellers</a>
-              <a href="#">Collections</a>
-            </div>
-
-            <div className="footer-links-col">
-              <h4>Customer Care</h4>
-              <a href="#">Shipping Policy</a>
-              <a href="#">Return & Exchanges</a>
-              <a href="#">Privacy Policy</a>
-            </div>
-
-            <div className="footer-newsletter-col">
-              <h4>Newsletter</h4>
-              <div className="newsletter-input-box">
-                <input type="email" placeholder="Your email" />
-                <button type="button" className="newsletter-send-btn">
-                  <Send size={16} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="footer-bottom-copy">
-            © 2024 mystore Minimalist. All rights reserved.
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

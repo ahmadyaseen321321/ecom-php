@@ -226,3 +226,12 @@
   background: #f3f4f6;
   color: #111827;
 }
+
+.act-icon-btn.chat-icon-btn {
+  color: #16a34a;
+}
+
+.act-icon-btn.chat-icon-btn:hover {
+  background: #dcfce7;
+  color: #15803d;
+}

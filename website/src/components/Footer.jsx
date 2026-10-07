@@ -51,11 +51,10 @@ export default function Footer() {
           <div className="footer-col">
             <h4 className="footer-title">QUICK LINKS</h4>
             <ul className="footer-nav">
-              <li><a href="#seasonal-archive">Shop All</a></li>
-              <li><a href="#just-landed">New Arrivals</a></li>
-              <li><a href="#seasonal-archive">Best Sellers</a></li>
-              <li><a href="#hero">Lookbook</a></li>
-              <li><a href="#testimonials">Sustainability</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); navigateTo('shop'); }}>Shop All</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); navigateTo('about'); }}>About & Sustainability</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); navigateTo('wishlist'); }}>My Wishlist</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); navigateTo('orders'); }}>Track Orders</a></li>
             </ul>
           </div>
 
@@ -63,11 +62,9 @@ export default function Footer() {
           <div className="footer-col">
             <h4 className="footer-title">CUSTOMER CARE</h4>
             <ul className="footer-nav">
-              <li><a href="#">Contact Us</a></li>
-              <li><a href="#">Shipping & Returns</a></li>
-              <li><a href="#">Help Center</a></li>
-              <li><a href="#">Size Guide</a></li>
-              <li><a href="#">Store Locator</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); navigateTo('contact'); }}>Contact Us</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); navigateTo('messages'); }}>Order Messages</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); navigateTo('about'); }}>Our Mission</a></li>
             </ul>
           </div>
 

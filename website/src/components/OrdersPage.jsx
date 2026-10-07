@@ -17,124 +17,29 @@ import {
   RotateCcw,
   Check,
   CircleDot,
-  Home
+  Home,
+  Package
 } from 'lucide-react';
 import './OrdersPage.css';
 
-const DEMO_ORDERS = [
-  {
-    id: 'NV-2023-8901',
-    created_at: '2024-10-12T10:00:00Z',
-    status: 'Delivered',
-    total_amount: 145.00,
-    payment_method: 'VISA Ending in 4242',
-    customer_name: 'Eleanor Shellstrop',
-    address: '123 Fake Street, Apt 4B, New York, NY 10001',
-    tracking_number: '1Z9999999999999999',
-    subtotal: 135.00,
-    shipping_fee: 5.99,
-    tax: 4.01,
-    items: [
-      {
-        id: 101,
-        name: 'Organic Cotton Throw',
-        price: 85.00,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=400&q=80',
-        badge: 'Color: Sage Green',
-        subtext: '+2 other items'
-      },
-      {
-        id: 102,
-        name: 'Linen Pillow Set',
-        price: 50.00,
-        quantity: 2,
-        image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400&q=80',
-        badge: 'Size: 18x18'
-      }
-    ]
-  },
-  {
-    id: 'NV-2023-9122',
-    created_at: '2024-11-05T14:30:00Z',
-    status: 'In Transit',
-    total_amount: 89.50,
-    est_delivery: 'Nov 08',
-    payment_method: 'VISA Ending in 4242',
-    customer_name: 'Eleanor Shellstrop',
-    address: '123 Fake Street, Apt 4B, New York, NY 10001',
-    tracking_number: '1Z8829102938192837',
-    subtotal: 79.50,
-    shipping_fee: 5.99,
-    tax: 4.01,
-    items: [
-      {
-        id: 103,
-        name: 'Bamboo Desk Lamp',
-        price: 89.50,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400&q=80',
-        badge: 'Color: Natural Wood',
-        subtext: 'Est. Delivery: Nov 08'
-      }
-    ]
-  },
-  {
-    id: 'NV-2023-9405',
-    created_at: '2024-11-07T09:15:00Z',
-    status: 'Processing',
-    total_amount: 210.00,
-    payment_method: 'VISA Ending in 4242',
-    customer_name: 'Eleanor Shellstrop',
-    address: '123 Fake Street, Apt 4B, New York, NY 10001',
-    tracking_number: '1Z3392817263541298',
-    subtotal: 195.00,
-    shipping_fee: 5.99,
-    tax: 9.01,
-    items: [
-      {
-        id: 104,
-        name: 'Linen Essentials Set',
-        price: 210.00,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400&q=80',
-        badge: 'Size: Queen',
-        subtext: 'Preparing for shipment'
-      }
-    ]
-  },
-  {
-    id: 'NV-2023-7742',
-    created_at: '2024-09-28T16:20:00Z',
-    status: 'Cancelled',
-    total_amount: 42.00,
-    payment_method: 'VISA Ending in 4242',
-    customer_name: 'Eleanor Shellstrop',
-    address: '123 Fake Street, Apt 4B, New York, NY 10001',
-    tracking_number: 'N/A',
-    subtotal: 38.00,
-    shipping_fee: 0,
-    tax: 4.00,
-    items: [
-      {
-        id: 105,
-        name: 'Recycled Glass Vase',
-        price: 42.00,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1581783342308-f792dbdd77c5?w=400&q=80',
-        badge: 'Clear Glass',
-        subtext: 'Refund processed'
-      }
-    ]
-  }
+const STATUS_FILTERS = [
+  'All',
+  'Pending Payment',
+  'Processing',
+  'On Hold',
+  'Completed',
+  'Cancelled',
+  'Refunded',
+  'Failed'
 ];
 
 export default function OrdersPage() {
-  const { user, setIsAuthModalOpen, navigateTo, showToast, addToCart } = useCart();
-  const [orders, setOrders] = useState(DEMO_ORDERS);
+  const { user, openLoginModal, openSignupModal, setIsAuthModalOpen, navigateTo, showToast, addToCart } = useCart();
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [timeFilter, setTimeFilter] = useState('Last 3 Months');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [timeFilter, setTimeFilter] = useState('All Orders');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
 
@@ -146,21 +51,122 @@ export default function OrdersPage() {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
-    loadOrders();
+    if (user) {
+      loadOrders();
+    } else {
+      setOrders([]);
+    }
   }, [user]);
 
   const loadOrders = async () => {
+    setLoading(true);
     try {
       const data = await fetchOrdersApi();
-      if (data && Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setOrders(data);
-      } else if (data && Array.isArray(data.data) && data.data.length > 0) {
+      } else if (data && Array.isArray(data.data)) {
         setOrders(data.data);
+      } else {
+        setOrders([]);
       }
     } catch (err) {
-      console.warn('Using demo orders fallback:', err);
+      console.warn('Error loading orders:', err);
+      setOrders([]);
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="orders-page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 160px)', padding: '40px 20px' }}>
+        <div 
+          className="animate-fade-in"
+          style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            padding: '48px 36px',
+            maxWidth: '480px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
+            border: '1px solid #e5e7eb'
+          }}
+        >
+          <div style={{ width: '72px', height: '72px', borderRadius: '22px', background: 'linear-gradient(135deg, #2d5a27 0%, #1e3d1a 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 10px 25px -5px rgba(45, 90, 39, 0.4)' }}>
+            <Package size={32} />
+          </div>
+
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#111827', margin: '0 0 10px' }}>
+            Log in to view your Orders
+          </h2>
+          <p style={{ fontSize: '0.95rem', color: '#6b7280', margin: '0 0 32px', lineHeight: 1.5 }}>
+            Sign in to track active shipments, view order receipts, and manage your past purchases.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+            <button
+              onClick={openLoginModal}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                borderRadius: '14px',
+                border: 'none',
+                background: '#2d5a27',
+                color: '#fff',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Package size={16} />
+              <span>Log In</span>
+            </button>
+
+            <button
+              onClick={openSignupModal}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                borderRadius: '14px',
+                border: '1.5px solid #d1d5db',
+                background: '#fff',
+                color: '#111827',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>Sign Up</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => navigateTo('shop')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#6b7280',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            Continue Exploring Products
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleCancelOrder = async (orderId) => {
     if (!window.confirm('Are you sure you want to cancel this order?')) return;
@@ -235,7 +241,7 @@ export default function OrdersPage() {
     }
   };
 
-  // Filtered orders by search & drop-down filter
+  // Filtered orders by search, status filter & time filter
   const filteredOrders = useMemo(() => {
     let result = orders;
 
@@ -244,19 +250,68 @@ export default function OrdersPage() {
       result = result.filter(
         (o) =>
           String(o.id).toLowerCase().includes(q) ||
-          (o.items && o.items.some((it) => it.name.toLowerCase().includes(q)))
+          (o.items && o.items.some((it) => (it.name || it.product_name || '').toLowerCase().includes(q))) ||
+          (o.shipping_address && String(o.shipping_address).toLowerCase().includes(q))
       );
     }
 
+    if (statusFilter && statusFilter !== 'All') {
+      const target = statusFilter.toLowerCase().replace(/\s+/g, '');
+      result = result.filter((o) => {
+        const s = (o.status || o.order_status || 'processing').toLowerCase().replace(/\s+/g, '');
+        if (target === 'completed') {
+          return s === 'completed' || s === 'delivered';
+        }
+        if (target === 'pendingpayment') {
+          return s === 'pendingpayment' || s === 'pending';
+        }
+        if (target === 'processing') {
+          return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped';
+        }
+        if (target === 'onhold') {
+          return s === 'onhold' || s === 'hold';
+        }
+        if (target === 'cancelled') {
+          return s === 'cancelled' || s === 'canceled';
+        }
+        if (target === 'refunded') {
+          return s === 'refunded' || s === 'refund';
+        }
+        if (target === 'failed') {
+          return s === 'failed';
+        }
+        return s === target || s.includes(target);
+      });
+    }
+
+    if (timeFilter && timeFilter !== 'All Orders') {
+      const now = Date.now();
+      if (timeFilter === 'Last 30 Days') {
+        result = result.filter(o => (now - new Date(o.created_at || o.date || now).getTime()) <= 30 * 24 * 3600 * 1000);
+      } else if (timeFilter === 'Last 3 Months') {
+        result = result.filter(o => (now - new Date(o.created_at || o.date || now).getTime()) <= 90 * 24 * 3600 * 1000);
+      } else if (timeFilter === '2024') {
+        result = result.filter(o => new Date(o.created_at || o.date || now).getFullYear() === 2024);
+      }
+    }
+
     return result;
-  }, [orders, searchQuery]);
+  }, [orders, searchQuery, statusFilter, timeFilter]);
 
   const renderStatusPill = (status) => {
-    const st = (status || 'Processing').toLowerCase();
-    if (st.includes('delivered')) {
-      return <span className="status-pill pill-delivered">Delivered</span>;
+    const raw = (status || 'Processing').trim();
+    const st = raw.toLowerCase().replace(/\s+/g, '');
+    
+    if (st.includes('deliver') || st.includes('complete')) {
+      return <span className="status-pill pill-completed"><CheckCircle2 size={13} /> Completed</span>;
     }
-    if (st.includes('transit')) {
+    if (st.includes('pendingpayment') || st === 'pending') {
+      return <span className="status-pill pill-pending">Pending Payment</span>;
+    }
+    if (st.includes('hold')) {
+      return <span className="status-pill pill-onhold">On Hold</span>;
+    }
+    if (st.includes('transit') || st.includes('shipped')) {
       return (
         <span className="status-pill pill-transit">
           <Truck size={13} /> In Transit
@@ -265,6 +320,12 @@ export default function OrdersPage() {
     }
     if (st.includes('cancel')) {
       return <span className="status-pill pill-cancelled">Cancelled</span>;
+    }
+    if (st.includes('refund')) {
+      return <span className="status-pill pill-refunded">Refunded</span>;
+    }
+    if (st.includes('fail')) {
+      return <span className="status-pill pill-failed">Failed</span>;
     }
     return <span className="status-pill pill-processing">Processing</span>;
   };
@@ -400,26 +461,30 @@ export default function OrdersPage() {
                 <h3>Items in this shipment</h3>
 
                 <div className="items-list-rows">
-                  {items.map((item, idx) => (
-                    <div key={idx} className="shipment-item-row">
-                      <img
-                        src={item.image ? getImageUrl(item.image) : 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=400&q=80'}
-                        alt={item.name}
-                        className="shipment-item-img"
-                      />
-                      <div className="shipment-item-details">
-                        <h4>{item.name}</h4>
-                        <div className="item-variant-pills">
-                          {item.badge && <span className="variant-pill">{item.badge}</span>}
-                          <span className="variant-pill">Qty: {item.quantity || 1}</span>
+                  {items.map((item, idx) => {
+                    const itemImg = item.main_image || item.image || item.image_url;
+                    const itemPrice = Number(item.price || 0);
+                    const itemQty = Number(item.quantity || 1);
+                    return (
+                      <div key={idx} className="shipment-item-row">
+                        <img
+                          src={itemImg ? getImageUrl(itemImg) : '/hero_lifestyle.png'}
+                          alt={item.name}
+                          className="shipment-item-img"
+                        />
+                        <div className="shipment-item-details">
+                          <h4>{item.name}</h4>
+                          <div className="item-variant-pills">
+                            <span className="variant-pill">Qty: {itemQty}</span>
+                          </div>
+                          <span className="unit-price-text">Rs. {itemPrice.toLocaleString()} each</span>
                         </div>
-                        <span className="unit-price-text">${Number(item.price).toFixed(2)} each</span>
+                        <div className="shipment-item-total">
+                          Rs. {(itemPrice * itemQty).toLocaleString()}
+                        </div>
                       </div>
-                      <div className="shipment-item-total">
-                        ${(Number(item.price) * (item.quantity || 1)).toFixed(2)}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -436,9 +501,8 @@ export default function OrdersPage() {
                     <span>Shipping Address</span>
                   </div>
                   <div className="sub-box-body">
-                    <p className="address-name">{o.customer_name || 'Eleanor Shellstrop'}</p>
-                    <p>{o.address || '123 Fake Street, Apt 4B'}</p>
-                    <p>New York, NY 10001</p>
+                    <p className="address-name">{o.customer_name || user?.full_name || user?.name || 'Customer'}</p>
+                    <p>{o.shipping_address || o.address || 'Standard Delivery Address'}</p>
                   </div>
                 </div>
 
@@ -448,8 +512,8 @@ export default function OrdersPage() {
                     <span>Payment Method</span>
                   </div>
                   <div className="sub-box-body payment-body">
-                    <span className="visa-badge">VISA</span>
-                    <span>Ending in 4242</span>
+                    <span className="visa-badge">{o.payment_method ? o.payment_method.toUpperCase() : 'COD'}</span>
+                    <span>{o.payment_status ? `Status: ${o.payment_status}` : 'Cash on Delivery'}</span>
                   </div>
                 </div>
               </div>
@@ -460,23 +524,23 @@ export default function OrdersPage() {
 
                 <div className="summary-rows">
                   <div className="summary-row">
-                    <span>Subtotal ({items.length} items)</span>
-                    <span>${Number(o.subtotal || o.total_amount * 0.88).toFixed(2)}</span>
+                    <span>Subtotal ({items.length} {items.length === 1 ? 'item' : 'items'})</span>
+                    <span>Rs. {Number(o.subtotal ?? (Number(o.total ?? o.total_amount ?? 0) * 0.88)).toLocaleString()}</span>
                   </div>
                   <div className="summary-row">
                     <span>Shipping</span>
-                    <span>${Number(o.shipping_fee || 5.99).toFixed(2)}</span>
+                    <span>{o.shipping_fee ? `Rs. ${Number(o.shipping_fee).toLocaleString()}` : 'Free'}</span>
                   </div>
                   <div className="summary-row">
-                    <span>Tax</span>
-                    <span>${Number(o.tax || 8.37).toFixed(2)}</span>
+                    <span>Estimated Tax</span>
+                    <span>{o.tax ? `Rs. ${Number(o.tax).toLocaleString()}` : 'Rs. 0'}</span>
                   </div>
 
                   <div className="summary-divider"></div>
 
                   <div className="summary-row total-row">
                     <span>Total</span>
-                    <span className="total-amount-val">${Number(o.total_amount || 107.36).toFixed(2)}</span>
+                    <span className="total-amount-val">Rs. {Number(o.total ?? o.total_amount ?? o.total_price ?? 0).toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -539,52 +603,118 @@ export default function OrdersPage() {
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value)}
             >
+              <option value="All Orders">All Orders</option>
               <option value="Last 30 Days">Last 30 Days</option>
               <option value="Last 3 Months">Last 3 Months</option>
               <option value="2024">2024</option>
-              <option value="All Orders">All Orders</option>
             </select>
           </div>
         </div>
 
-        {/* Orders Cards Grid */}
-        <div className="orders-cards-grid">
-          {filteredOrders.map((order) => {
-            const firstItem = order.items && order.items.length > 0 ? order.items[0] : null;
-            const statusLower = (order.status || '').toLowerCase();
-            const isDelivered = statusLower.includes('delivered');
-            const isInTransit = statusLower.includes('transit');
-            const isProcessing = statusLower.includes('processing');
-            const isCancelled = statusLower.includes('cancel');
+        {/* Order Status Filters Bar (as shown in second image) */}
+        <div className="order-status-filter-pills-bar">
+          {STATUS_FILTERS.map((tab) => {
+            const count = tab === 'All'
+              ? orders.length
+              : orders.filter((o) => {
+                  const s = (o.status || o.order_status || 'Processing').toLowerCase().replace(/\s+/g, '');
+                  const t = tab.toLowerCase().replace(/\s+/g, '');
+                  if (t === 'completed') return s === 'completed' || s === 'delivered';
+                  if (t === 'pendingpayment') return s === 'pendingpayment' || s === 'pending';
+                  if (t === 'processing') return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped';
+                  if (t === 'onhold') return s === 'onhold' || s === 'hold';
+                  if (t === 'cancelled') return s === 'cancelled' || s === 'canceled';
+                  if (t === 'refunded') return s === 'refunded' || s === 'refund';
+                  if (t === 'failed') return s === 'failed';
+                  return s === t || s.includes(t);
+                }).length;
 
             return (
-              <div key={order.id} className="history-order-card">
-                <div className="card-top-row">
-                  <div>
-                    <span className="order-number-tag">ORDER #{order.id}</span>
-                    <span className="order-date">
-                      {new Date(order.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              <button
+                key={tab}
+                className={`status-filter-chip ${statusFilter === tab ? 'active' : ''}`}
+                onClick={() => setStatusFilter(tab)}
+              >
+                <span>{tab}</span>
+                {count > 0 && <span className="count-badge">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Orders Cards Grid */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
+            <Loader2 className="animate-spin" size={32} style={{ margin: '0 auto 16px', color: '#2d5a27' }} />
+            <p style={{ fontSize: '1rem', fontWeight: 600 }}>Loading your orders...</p>
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '20px', border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#f0fdf4', color: '#2d5a27', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Package size={28} />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>
+              No orders found
+            </h3>
+            <p style={{ color: '#6b7280', fontSize: '0.95rem', margin: '0 0 24px' }}>
+              {searchQuery || statusFilter !== 'All' ? 'No orders match your selected filters.' : "You haven't placed any orders yet."}
+            </p>
+            <button
+              onClick={() => { setSearchQuery(''); setStatusFilter('All'); setTimeFilter('All Orders'); navigateTo('shop'); }}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '12px',
+                border: 'none',
+                background: '#2d5a27',
+                color: '#fff',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Start Shopping
+            </button>
+          </div>
+        ) : (
+          <div className="orders-cards-grid">
+            {filteredOrders.map((order) => {
+              const firstItem = order.items && order.items.length > 0 ? order.items[0] : null;
+              const firstItemImage = firstItem?.main_image || firstItem?.image || firstItem?.image_url;
+              const orderTotal = Number(order.total ?? order.total_amount ?? order.total_price ?? 0);
+              const statusLower = (order.status || '').toLowerCase();
+              const isDelivered = statusLower.includes('delivered');
+              const isInTransit = statusLower.includes('transit');
+              const isProcessing = statusLower.includes('processing') || statusLower.includes('pending');
+              const isCancelled = statusLower.includes('cancel');
+
+              return (
+                <div key={order.id} className="history-order-card">
+                  <div className="card-top-row">
+                    <div className="card-order-meta-col">
+                      <span className="order-number-tag">ORDER #{order.id}</span>
+                      <span className="order-date">
+                        {new Date(order.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                    {renderStatusPill(order.status)}
+                  </div>
+
+                  <div className="card-item-body">
+                    <img
+                      src={firstItemImage ? getImageUrl(firstItemImage) : '/hero_lifestyle.png'}
+                      alt={firstItem?.name || 'Order Item'}
+                      className="item-thumb-img"
+                    />
+                    <div className="item-info-text">
+                      <h3>{firstItem?.name || `Order #${order.id}`}</h3>
+                      <p>{order.shipping_address ? `Delivery to: ${order.shipping_address}` : (order.items?.length > 1 ? `+${order.items.length - 1} other items` : 'Standard Delivery')}</p>
+                    </div>
+                  </div>
+
+                  <div className="card-bottom-row">
+                    <span className="order-total-price">
+                      Rs. {orderTotal.toLocaleString()}
                     </span>
-                  </div>
-                  {renderStatusPill(order.status)}
-                </div>
-
-                <div className="card-item-body">
-                  <img
-                    src={firstItem?.image ? getImageUrl(firstItem.image) : 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=400&q=80'}
-                    alt={firstItem?.name || 'Order Item'}
-                    className="item-thumb-img"
-                  />
-                  <div className="item-info-text">
-                    <h3>{firstItem?.name || 'Organic Cotton Throw'}</h3>
-                    <p>{firstItem?.subtext || (order.items?.length > 1 ? `+${order.items.length - 1} other items` : 'Standard Delivery')}</p>
-                  </div>
-                </div>
-
-                <div className="card-bottom-row">
-                  <span className="order-total-price">
-                    ${Number(order.total_amount).toFixed(2)}
-                  </span>
 
                   <div className="card-action-buttons">
                     {isDelivered && (
@@ -651,7 +781,8 @@ export default function OrdersPage() {
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Review Modal for Delivered Orders */}

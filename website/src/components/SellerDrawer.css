@@ -148,7 +148,7 @@
   box-shadow: 0 0 0 3px rgba(61, 86, 71, 0.12);
 }
 
-.input-with-icon {
+.drawer-form .input-with-icon {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -158,7 +158,7 @@
   background: #FFFFFF;
 }
 
-.input-with-icon input {
+.drawer-form .input-with-icon input {
   border: none !important;
   box-shadow: none !important;
   padding: 9px 0 !important;

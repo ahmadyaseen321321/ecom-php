@@ -28,9 +28,9 @@ if (!$userId) {
 }
 
 $role = $jwtHelper->getRole();
-if ($role !== 'seller') {
+if ($role !== 'seller' && $role !== 'admin') {
      http_response_code(403);
-     echo json_encode(["status" => "error", "message" => "Forbidden: Seller role required"]);
+     echo json_encode(["status" => "error", "message" => "Forbidden: Seller or Admin role required"]);
      exit();
 }
 
@@ -41,7 +41,15 @@ $sellerStmt->bindParam(':user_id', $userId);
 $sellerStmt->execute();
 $seller = $sellerStmt->fetch(PDO::FETCH_ASSOC);
 
+if (!$seller && $role === 'admin') {
+    $seller = $db->query("SELECT id FROM sellers LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+}
+
 if (!$seller) {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        echo json_encode(["status" => "success", "data" => []]);
+        exit();
+    }
     http_response_code(403);
     echo json_encode(["status" => "error", "message" => "Seller profile not found"]);
     exit();
@@ -51,18 +59,40 @@ $sellerId = $seller['id'];
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    // Fetch unique orders that contain at least one product from this seller
-    $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, u.full_name as customer_name, u.phone as customer_phone, o.cancellation_reason 
-              FROM orders o
-              JOIN users u ON o.user_id = u.id
-              JOIN order_items oi ON o.id = oi.order_id
-              JOIN products p ON oi.product_id = p.id
-              WHERE p.seller_id = :seller_id
-              ORDER BY o.created_at DESC";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':seller_id', $sellerId);
-    $stmt->execute();
-    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // If admin, or if seller has products, fetch accordingly
+    if ($role === 'admin' && empty($sellerId)) {
+        $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, u.full_name as customer_name, u.phone as customer_phone
+                  FROM orders o
+                  JOIN users u ON o.user_id = u.id
+                  ORDER BY o.created_at DESC";
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        // Fetch unique orders that contain at least one product from this seller
+        $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, u.full_name as customer_name, u.phone as customer_phone
+                  FROM orders o
+                  JOIN users u ON o.user_id = u.id
+                  JOIN order_items oi ON o.id = oi.order_id
+                  JOIN products p ON oi.product_id = p.id
+                  WHERE p.seller_id = :seller_id
+                  ORDER BY o.created_at DESC";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':seller_id', $sellerId);
+        $stmt->execute();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback for admin if seller has no orders yet
+        if (empty($orders) && $role === 'admin') {
+            $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, u.full_name as customer_name, u.phone as customer_phone
+                      FROM orders o
+                      JOIN users u ON o.user_id = u.id
+                      ORDER BY o.created_at DESC";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
 
     $result = [];
     foreach ($orders as $order) {
@@ -70,11 +100,15 @@ if ($method === 'GET') {
                       FROM order_items oi
                       JOIN products p ON oi.product_id = p.id
                       LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_main = 1
-                      WHERE oi.order_id = :order_id AND p.seller_id = :seller_id";
+                      WHERE oi.order_id = :order_id";
+        $params = [':order_id' => $order['id']];
+        if ($role !== 'admin' && !empty($sellerId)) {
+            $itemQuery .= " AND p.seller_id = :seller_id";
+            $params[':seller_id'] = $sellerId;
+        }
+
         $itemStmt = $db->prepare($itemQuery);
-        $itemStmt->bindParam(':order_id', $order['id']);
-        $itemStmt->bindParam(':seller_id', $sellerId);
-        $itemStmt->execute();
+        $itemStmt->execute($params);
         $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $orderTotal = 0;
@@ -87,15 +121,19 @@ if ($method === 'GET') {
         $result[] = [
             "id" => $order['id'],
             "customerName" => $order['customer_name'],
+            "customer_name" => $order['customer_name'],
             "customer_phone" => $order['customer_phone'],
             "shipping_address" => $order['shipping_address'],
             "payment_method" => $order['payment_method'],
             "payment_status" => $order['payment_status'],
             "status" => strtolower($order['status']),
+            "order_status" => $order['status'],
             "date" => $order['created_at'],
+            "created_at" => $order['created_at'],
             "total" => $orderTotal,
+            "total_amount" => $orderTotal,
             "itemCount" => $itemCount,
-            "cancellation_reason" => $order['cancellation_reason'],
+            "cancellation_reason" => isset($order['cancellation_reason']) ? $order['cancellation_reason'] : null,
             "items" => $items
         ];
 

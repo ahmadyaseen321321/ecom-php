@@ -9,86 +9,33 @@ import {
   ArrowLeft,
   CreditCard,
   Banknote,
-  Building
+  Building,
+  Lock,
+  LogIn,
+  UserPlus
 } from 'lucide-react';
+import { getImageUrl } from '../services/api';
 import './CartPage.css';
-
-const DEMO_CART_ITEMS = [
-  {
-    id: 'c1',
-    name: 'Artisan Sourdough Loaf',
-    variant: 'Freshly Baked • 500g',
-    price: 8.50,
-    quantity: 2,
-    image: 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?w=400&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'c2',
-    name: 'Chocolate Fudge Cake',
-    variant: 'Double Layer • Slice',
-    price: 12.00,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'c3',
-    name: 'Glazed Donut Box',
-    variant: 'Set of 4 • Assorted',
-    price: 15.00,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=400&auto=format&fit=crop&q=80'
-  }
-];
 
 export default function CartPage() {
   const {
     cart,
+    user,
     updateQuantity,
     removeFromCart,
     cartSubtotal,
     navigateTo,
-    showToast
+    showToast,
+    openLoginModal,
+    openSignupModal,
+    setIsLoginRequiredOpen
   } = useCart();
 
   const [promoCode, setPromoCode] = useState('');
-  const [demoCart, setDemoCart] = useState(DEMO_CART_ITEMS);
-
-  // Use active cart if populated, or demo fallback items matching checkout.png design mockup
-  const displayCart = useMemo(() => {
-    if (cart.length > 0) return cart;
-    return demoCart;
-  }, [cart, demoCart]);
-
-  const handleUpdateQty = (itemId, delta) => {
-    if (cart.length > 0) {
-      updateQuantity(itemId, delta);
-    } else {
-      setDemoCart((prev) =>
-        prev
-          .map((item) => {
-            if (item.id === itemId) {
-              const newQty = item.quantity + delta;
-              return newQty > 0 ? { ...item, quantity: newQty } : null;
-            }
-            return item;
-          })
-          .filter(Boolean)
-      );
-    }
-  };
-
-  const handleRemove = (itemId) => {
-    if (cart.length > 0) {
-      removeFromCart(itemId);
-    } else {
-      setDemoCart((prev) => prev.filter((item) => item.id !== itemId));
-      showToast('Item removed from cart');
-    }
-  };
 
   const subtotal = useMemo(() => {
-    return displayCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }, [displayCart]);
+    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [cart]);
 
   const handleApplyPromo = (e) => {
     e.preventDefault();
@@ -98,6 +45,10 @@ export default function CartPage() {
   };
 
   const handleProceedCheckout = () => {
+    if (!user) {
+      setIsLoginRequiredOpen(true);
+      return;
+    }
     navigateTo('checkout');
   };
 
@@ -113,15 +64,106 @@ export default function CartPage() {
 
         <h1 className="cart-main-heading">Your Cart</h1>
 
-        {displayCart.length === 0 ? (
+        {/* Unauthenticated User Banner */}
+        {!user && (
+          <div 
+            className="animate-fade-in"
+            style={{
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+              border: '1.5px solid #86efac',
+              borderRadius: '16px',
+              padding: '18px 24px',
+              marginBottom: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+              flexWrap: 'wrap'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#2d5a27', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Lock size={20} />
+              </div>
+              <div>
+                <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: '#14532d' }}>
+                  Log in to buy a product
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#166534' }}>
+                  Please sign in or create an account to save items and proceed to checkout.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={openLoginModal}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#2d5a27',
+                  color: '#fff',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <LogIn size={15} /> Log In
+              </button>
+              <button
+                onClick={openSignupModal}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #2d5a27',
+                  background: '#fff',
+                  color: '#2d5a27',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <UserPlus size={15} /> Sign Up
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cart.length === 0 ? (
           <div className="empty-cart-card">
             <ShoppingBag size={56} className="empty-bag-icon" />
             <h2>Your cart is empty</h2>
-            <p>Looks like you haven't added any items to your cart yet.</p>
-            <button className="continue-shop-green-btn" onClick={() => navigateTo('shop')}>
-              <ArrowLeft size={18} />
-              <span>Explore Shop</span>
-            </button>
+            <p>
+              {!user
+                ? 'Log in to view your items or explore our catalog to add products.'
+                : "Looks like you haven't added any items to your cart yet."}
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px', flexWrap: 'wrap' }}>
+              {!user && (
+                <>
+                  <button className="continue-shop-green-btn" onClick={openLoginModal}>
+                    <LogIn size={18} />
+                    <span>Log In</span>
+                  </button>
+                  <button className="continue-shop-green-btn" onClick={openSignupModal} style={{ background: '#fff', color: '#2d5a27', border: '1.5px solid #2d5a27' }}>
+                    <UserPlus size={18} />
+                    <span>Sign Up</span>
+                  </button>
+                </>
+              )}
+              <button className="continue-shop-green-btn" onClick={() => navigateTo('shop')}>
+                <ArrowLeft size={18} />
+                <span>Explore Shop</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="cart-grid-layout">
@@ -136,150 +178,132 @@ export default function CartPage() {
               </div>
 
               <div className="cart-items-stack">
-                {displayCart.map((item) => (
+                {cart.map((item) => (
                   <div key={item.id} className="cart-product-row">
-                    <div className="col-product product-meta-box">
-                      <img src={item.image} alt={item.name} className="product-thumb-img" />
-                      <div>
-                        <h3 className="product-item-title">{item.name}</h3>
-                        <p className="product-variant-text">{item.variant || item.category || 'Standard'}</p>
+                    <div className="product-info-cell">
+                      <div className="product-thumb-container">
+                        <img src={getImageUrl(item.image)} alt={item.name} />
+                      </div>
+                      <div className="product-title-specs">
+                        <h4>{item.name}</h4>
+                        <span className="variant-label">{item.variant || item.category || 'Standard'}</span>
                       </div>
                     </div>
 
-                    <div className="col-quantity">
-                      <div className="qty-selector-pill">
+                    <div className="quantity-control-cell">
+                      <div className="qty-stepper">
                         <button
-                          type="button"
-                          onClick={() => handleUpdateQty(item.id, -1)}
-                          disabled={item.quantity <= 1}
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="stepper-btn"
+                          aria-label="Decrease quantity"
                         >
-                          <Minus size={14} />
+                          <Minus size={13} />
                         </button>
-                        <span className="qty-val">{item.quantity}</span>
-                        <button type="button" onClick={() => handleUpdateQty(item.id, 1)}>
-                          <Plus size={14} />
+                        <span className="stepper-val">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="stepper-btn"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus size={13} />
                         </button>
                       </div>
                     </div>
 
-                    <div className="col-price">
-                      <span className="price-text">${Number(item.price).toFixed(2)}</span>
+                    <div className="unit-price-cell">
+                      ${Number(item.price).toFixed(2)}
                     </div>
 
-                    <div className="col-total">
-                      <span className="total-price-text">${(Number(item.price) * item.quantity).toFixed(2)}</span>
+                    <div className="total-price-cell">
+                      ${(item.price * item.quantity).toFixed(2)}
                     </div>
 
-                    <div className="col-action">
+                    <div className="action-delete-cell">
                       <button
-                        type="button"
+                        onClick={() => removeFromCart(item.id)}
                         className="delete-item-btn"
-                        onClick={() => handleRemove(item.id)}
                         title="Remove item"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <button className="back-continue-shop-link" onClick={() => navigateTo('shop')}>
-                <ArrowLeft size={16} />
-                <span>Continue Shopping</span>
-              </button>
+              <div className="cart-table-footer">
+                <button
+                  className="back-to-shop-link"
+                  onClick={() => navigateTo('shop')}
+                >
+                  <ArrowLeft size={16} />
+                  <span>Continue Shopping</span>
+                </button>
+              </div>
             </div>
 
-            {/* Right Summary Sidebar */}
-            <aside className="cart-summary-sidebar">
-              <div className="summary-card-box">
-                <h2>Order Summary</h2>
+            {/* Right Order Summary Card */}
+            <div className="cart-summary-container">
+              <div className="order-summary-card">
+                <h3 className="summary-title">Order Summary</h3>
 
-                <div className="coupon-apply-section">
+                {/* Promo Code Input */}
+                <form className="promo-input-group" onSubmit={handleApplyPromo}>
                   <label>APPLY COUPON</label>
-                  <form className="coupon-input-group" onSubmit={handleApplyPromo}>
+                  <div className="input-with-button">
                     <input
                       type="text"
                       placeholder="Promo code"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value)}
                     />
-                    <button type="submit" className="apply-coupon-btn">
+                    <button type="submit" className="apply-promo-btn">
                       Apply
                     </button>
-                  </form>
-                </div>
+                  </div>
+                </form>
 
-                <div className="summary-calc-rows">
-                  <div className="calc-row">
+                {/* Line Items */}
+                <div className="summary-lines-stack">
+                  <div className="summary-line">
                     <span>Subtotal</span>
                     <span>${subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="calc-row">
+                  <div className="summary-line">
                     <span>Shipping</span>
-                    <span className="shipping-calc-note">Calculated at next step</span>
+                    <span className="muted-italic">Calculated at next step</span>
                   </div>
-                  <div className="calc-row">
+                  <div className="summary-line">
                     <span>Estimated Tax</span>
                     <span>$0.00</span>
                   </div>
                 </div>
 
-                <div className="summary-total-bar">
+                <div className="summary-divider-line"></div>
+
+                {/* Total */}
+                <div className="summary-grand-total">
                   <span>Total</span>
-                  <span className="grand-total-val">${subtotal.toFixed(2)}</span>
+                  <span className="grand-amount">${subtotal.toFixed(2)}</span>
                 </div>
 
-                <button className="proceed-to-checkout-btn" onClick={handleProceedCheckout}>
+                {/* Checkout CTA */}
+                <button
+                  className="proceed-checkout-btn"
+                  onClick={handleProceedCheckout}
+                >
                   <span>Proceed to Checkout</span>
                   <ArrowRight size={18} />
                 </button>
 
-                <div className="secure-tag-row">
-                  <span>SECURE CHECKOUT POWERED BY MYSTORE</span>
-                </div>
-
-                <div className="payment-icons-flex">
-                  <CreditCard size={22} />
-                  <Banknote size={22} />
-                  <Building size={22} />
+                <div className="checkout-trust-badge">
+                  <span>SECURE CHECKOUT POWERED BY NOVANEST</span>
                 </div>
               </div>
-            </aside>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      <footer className="cart-page-footer">
-        <div className="container">
-          <div className="footer-content-flex">
-            <div className="brand-copy-info">
-              <h3>mystore</h3>
-              <p>Providing high-quality artisan goods delivered directly to your door. Experience the taste of premium quality with every order.</p>
-            </div>
-
-            <div className="footer-links-group">
-              <div>
-                <h4>Support</h4>
-                <a href="#">Help Center</a>
-                <a href="#">Shipping Policy</a>
-                <a href="#">Returns</a>
-              </div>
-              <div>
-                <h4>Company</h4>
-                <a href="#">About Us</a>
-                <a href="#">Careers</a>
-                <a href="#">Sustainability</a>
-              </div>
-            </div>
-          </div>
-
-          <div className="footer-bottom-bar">
-            <span>© 2024 mystore eCommerce. All rights reserved.</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

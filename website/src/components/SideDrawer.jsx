@@ -11,7 +11,10 @@ import {
   Leaf,
   Sparkles,
   ShieldCheck,
-  LogIn
+  LogIn,
+  Heart,
+  Package,
+  Mail
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import './SideDrawer.css';
@@ -24,6 +27,7 @@ export default function SideDrawer() {
     logout,
     setIsAuthModalOpen,
     setActiveInfoModal,
+    navigateTo,
     showToast
   } = useCart();
 
@@ -36,6 +40,11 @@ export default function SideDrawer() {
     } else {
       setActiveInfoModal(modalName);
     }
+  };
+
+  const handleNavigate = (page) => {
+    setIsSideDrawerOpen(false);
+    navigateTo(page);
   };
 
   const handleLogout = () => {
@@ -111,9 +120,31 @@ export default function SideDrawer() {
 
         {/* Navigation Options List */}
         <nav className="drawer-nav-menu">
-          <div className="menu-section-label">Account & Support</div>
+          <div className="menu-section-label">Shop & Account</div>
 
-          <button className="nav-item" onClick={() => handleOpenModal('profile')}>
+          <button className="nav-item" onClick={() => handleNavigate('orders')}>
+            <div className="nav-item-left">
+              <div className="icon-wrapper profile-icon">
+                <Package size={18} />
+              </div>
+              <span className="nav-label">My Orders</span>
+            </div>
+            <ChevronRight size={16} className="chevron" />
+          </button>
+
+          <button className="nav-item" onClick={() => handleNavigate('wishlist')}>
+            <div className="nav-item-left">
+              <div className="icon-wrapper about-icon">
+                <Heart size={18} />
+              </div>
+              <span className="nav-label">My Wishlist</span>
+            </div>
+            <ChevronRight size={16} className="chevron" />
+          </button>
+
+          <div className="menu-section-label" style={{ marginTop: '12px' }}>Support & Information</div>
+
+          <button className="nav-item" onClick={() => handleNavigate('profile')}>
             <div className="nav-item-left">
               <div className="icon-wrapper profile-icon">
                 <User size={18} />
@@ -123,7 +154,7 @@ export default function SideDrawer() {
             <ChevronRight size={16} className="chevron" />
           </button>
 
-          <button className="nav-item" onClick={() => handleOpenModal('settings')}>
+          <button className="nav-item" onClick={() => handleNavigate('settings')}>
             <div className="nav-item-left">
               <div className="icon-wrapper settings-icon">
                 <Settings size={18} />
@@ -133,12 +164,22 @@ export default function SideDrawer() {
             <ChevronRight size={16} className="chevron" />
           </button>
 
-          <button className="nav-item" onClick={() => handleOpenModal('about')}>
+          <button className="nav-item" onClick={() => handleNavigate('about')}>
             <div className="nav-item-left">
               <div className="icon-wrapper about-icon">
                 <Info size={18} />
               </div>
               <span className="nav-label">About Us</span>
+            </div>
+            <ChevronRight size={16} className="chevron" />
+          </button>
+
+          <button className="nav-item" onClick={() => handleNavigate('contact')}>
+            <div className="nav-item-left">
+              <div className="icon-wrapper contact-icon" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+                <Mail size={18} />
+              </div>
+              <span className="nav-label">Contact Us</span>
             </div>
             <ChevronRight size={16} className="chevron" />
           </button>

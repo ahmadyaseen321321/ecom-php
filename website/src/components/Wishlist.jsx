@@ -1,63 +1,20 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useCart } from '../context/CartContext';
-import { ShoppingBag, X, ArrowRight } from 'lucide-react';
+import { ShoppingBag, X, ArrowRight, Heart } from 'lucide-react';
 import './Wishlist.css';
 
-const MOCK_WISHLIST_DEMO = [
-  {
-    id: 'w1',
-    name: 'Linen Blend Jacket',
-    price: 145.00,
-    image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'w2',
-    name: 'Minimalist Timepiece',
-    price: 210.00,
-    image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'w3',
-    name: 'Leather Travel Bag',
-    price: 185.00,
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'w4',
-    name: 'Essential Cotton Tee',
-    price: 35.00,
-    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'w5',
-    name: 'City Walk Sneakers',
-    price: 120.00,
-    image: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&auto=format&fit=crop&q=80'
-  }
-];
-
 export default function Wishlist() {
-  const { wishlist, liveProducts, toggleWishlist, addToCart, navigateTo, showToast } = useCart();
-
-  // Combine live saved wishlist items with mock demo items for full design representation
-  const [removedDemoIds, setRemovedDemoIds] = useState([]);
+  const { user, openLoginModal, openSignupModal, wishlist, liveProducts, toggleWishlist, addToCart, navigateTo, showToast } = useCart();
 
   const wishlistItems = useMemo(() => {
-    const liveItems = liveProducts.filter((product) =>
+    return liveProducts.filter((product) =>
       wishlist.includes(String(product.id)) || wishlist.includes(product.id)
     );
-    if (liveItems.length > 0) return liveItems;
-
-    return MOCK_WISHLIST_DEMO.filter((item) => !removedDemoIds.includes(item.id));
-  }, [liveProducts, wishlist, removedDemoIds]);
+  }, [liveProducts, wishlist]);
 
   const handleRemove = (itemId) => {
-    if (wishlist.length > 0) {
-      toggleWishlist(itemId);
-    } else {
-      setRemovedDemoIds((prev) => [...prev, itemId]);
-      showToast('Item removed from Wishlist');
-    }
+    toggleWishlist(itemId);
+    showToast('Item removed from Wishlist');
   };
 
   const moveAllToCart = () => {
@@ -69,6 +26,97 @@ export default function Wishlist() {
 
     showToast(`Moved ${wishlistItems.length} items to cart`);
   };
+
+  if (!user) {
+    return (
+      <div className="wishlist-page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 160px)', padding: '40px 20px' }}>
+        <div 
+          className="animate-fade-in"
+          style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            padding: '48px 36px',
+            maxWidth: '480px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
+            border: '1px solid #e5e7eb'
+          }}
+        >
+          <div style={{ width: '72px', height: '72px', borderRadius: '22px', background: 'linear-gradient(135deg, #2d5a27 0%, #1e3d1a 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 10px 25px -5px rgba(45, 90, 39, 0.4)' }}>
+            <Heart size={32} />
+          </div>
+
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#111827', margin: '0 0 10px' }}>
+            Log in to view your Wishlist
+          </h2>
+          <p style={{ fontSize: '0.95rem', color: '#6b7280', margin: '0 0 32px', lineHeight: 1.5 }}>
+            Sign in to access your saved favorites, track price drops, and manage your personal collection.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+            <button
+              onClick={openLoginModal}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                borderRadius: '14px',
+                border: 'none',
+                background: '#2d5a27',
+                color: '#fff',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Heart size={16} />
+              <span>Log In</span>
+            </button>
+
+            <button
+              onClick={openSignupModal}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                borderRadius: '14px',
+                border: '1.5px solid #d1d5db',
+                background: '#fff',
+                color: '#111827',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>Sign Up</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => navigateTo('shop')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#6b7280',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            Continue Exploring Products
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="wishlist-page-wrapper">

@@ -32,17 +32,17 @@
 .header-menu-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 20px;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   border: 1px solid #E2E8F0;
   background-color: #F8FAFC;
   color: #3D5647;
-  font-size: 0.88rem;
-  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  letter-spacing: 0.02em;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .header-menu-btn:hover {
@@ -50,6 +50,7 @@
   color: #FFFFFF;
   border-color: #3D5647;
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(61, 86, 71, 0.15);
 }
 
 .brand-logo {

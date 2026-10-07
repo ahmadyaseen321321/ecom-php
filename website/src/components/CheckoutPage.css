@@ -136,13 +136,13 @@
   box-shadow: 0 0 0 3px rgba(61, 86, 71, 0.1);
 }
 
-.input-with-icon {
+.checkout-page .input-with-icon {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.input-lock-icon {
+.checkout-page .input-lock-icon {
   position: absolute;
   right: 14px;
   color: #94A3B8;

@@ -38,8 +38,7 @@ $input = file_get_contents("php://input");
 $bodyData = json_decode($input, true) ?? [];
 $requestParams = array_merge($_GET, $_POST, $bodyData);
 
-// Method Spoofing: Check for '_method' in params (e.g., from Flutter)
-$method = $_SERVER['REQUEST_METHOD'];
+// Method Spoofing: Check for '_method' in params (e.g., from Flutter or AJAX)
 if ($method === 'POST' && isset($requestParams['_method'])) {
     $method = strtoupper($requestParams['_method']);
 }
@@ -58,18 +57,35 @@ if ($method === 'GET') {
 
     if ($seller_id === 'current') {
         $userId = $jwtHelper->validateTokenAndGetUserId();
+        $role = $jwtHelper->getRole();
         if (!$userId) {
             http_response_code(401);
             echo json_encode(["status" => "error", "message" => "Unauthorized"]);
             exit();
         }
+
+        if ($role === 'admin') {
+            $query = "SELECT p.*, c.name as category_name, 
+                      (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_main DESC, id ASC LIMIT 1) as main_image,
+                      (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images
+                      FROM products p 
+                      LEFT JOIN categories c ON p.category_id = c.id
+                      ORDER BY p.created_at DESC";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(["status" => "success", "data" => $products]);
+            exit();
+        }
+
         $query = "SELECT p.*, c.name as category_name, 
-                  (SELECT image_url FROM product_images WHERE product_id = p.id LIMIT 1) as main_image,
+                  (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_main DESC, id ASC LIMIT 1) as main_image,
                   (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images
                   FROM products p 
-                  JOIN categories c ON p.category_id = c.id 
+                  LEFT JOIN categories c ON p.category_id = c.id 
                   JOIN sellers s ON p.seller_id = s.id 
-                  WHERE s.user_id = :user_id";
+                  WHERE s.user_id = :user_id
+                  ORDER BY p.created_at DESC";
         $stmt = $db->prepare($query);
         $stmt->bindParam(':user_id', $userId);
         $stmt->execute();
@@ -80,10 +96,10 @@ if ($method === 'GET') {
     }
 
     $query = "SELECT p.*, c.name as category_name, 
-              (SELECT image_url FROM product_images WHERE product_id = p.id LIMIT 1) as main_image,
+              (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_main DESC, id ASC LIMIT 1) as main_image,
               (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images
               FROM products p 
-              JOIN categories c ON p.category_id = c.id";
+              LEFT JOIN categories c ON p.category_id = c.id";
     $params = [];
 
     if ($category_id) {
@@ -100,7 +116,6 @@ if ($method === 'GET') {
 
     $query .= " ORDER BY p.created_at DESC";
 
-
     $stmt = $db->prepare($query);
     foreach ($params as $key => &$val)
         $stmt->bindParam($key, $val);
@@ -116,9 +131,9 @@ if ($method === 'GET') {
 // ---------------------------------------------------------
 $userId = $jwtHelper->validateTokenAndGetUserId();
 $role = $jwtHelper->getRole();
-if (!$userId || $role !== 'seller') {
+if (!$userId || ($role !== 'seller' && $role !== 'admin')) {
     http_response_code(401);
-    die(json_encode(["status" => "error", "message" => "Unauthorized: Seller role required"]));
+    die(json_encode(["status" => "error", "message" => "Unauthorized: Seller or Admin role required"]));
 }
 
 // ---------------------------------------------------------
@@ -137,24 +152,35 @@ if ($method === 'POST') {
         $stmt->bindValue(':uid', $userId);
         $stmt->execute();
         $s = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$s)
-            die(json_encode(["status" => "error", "message" => "No seller profile found."]));
+        if (!$s) {
+            // Find existing seller or create default seller profile
+            $sFirst = $db->query("SELECT id FROM sellers LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+            if ($sFirst) {
+                $s = $sFirst;
+            } else {
+                $ins = $db->prepare("INSERT INTO sellers (user_id, shop_name) VALUES (:uid, 'Store')");
+                $ins->execute([':uid' => $userId]);
+                $s = ['id' => $db->lastInsertId()];
+            }
+        }
 
         $db->beginTransaction();
 
-        $variants = isset($requestParams['variants']) ? $requestParams['variants'] : null;
+        $variants = isset($requestParams['variants']) ? (is_string($requestParams['variants']) ? $requestParams['variants'] : json_encode($requestParams['variants'])) : null;
+        $status = $requestParams['status'] ?? 'active';
 
         $sql = "INSERT INTO products (seller_id, category_id, name, description, price, discount_price, stock, variants, status) 
-                VALUES (:sid, :cat, :name, :desc, :price, :disc, :stock, :vars, 'active')";
+                VALUES (:sid, :cat, :name, :desc, :price, :disc, :stock, :vars, :status)";
         $stmt = $db->prepare($sql);
         $stmt->bindValue(':sid', $s['id']);
-        $stmt->bindValue(':cat', $requestParams['category_id']);
-        $stmt->bindValue(':name', $requestParams['name']);
-        $stmt->bindValue(':desc', $requestParams['description']);
-        $stmt->bindValue(':price', $requestParams['price']);
+        $stmt->bindValue(':cat', !empty($requestParams['category_id']) ? $requestParams['category_id'] : 1);
+        $stmt->bindValue(':name', $requestParams['name'] ?? 'Untitled Product');
+        $stmt->bindValue(':desc', $requestParams['description'] ?? '');
+        $stmt->bindValue(':price', $requestParams['price'] ?? 0);
         $stmt->bindValue(':disc', ($requestParams['discount_price'] ?? '') !== '' ? $requestParams['discount_price'] : null);
-        $stmt->bindValue(':stock', $requestParams['stock']);
+        $stmt->bindValue(':stock', isset($requestParams['stock']) ? (int)$requestParams['stock'] : 10);
         $stmt->bindValue(':vars', $variants);
+        $stmt->bindValue(':status', $status);
 
         if ($stmt->execute()) {
             $productId = $db->lastInsertId();
@@ -162,9 +188,14 @@ if ($method === 'POST') {
             if (!is_dir($uploadDir))
                 mkdir($uploadDir, 0777, true);
 
-            $allImages = [];
+            // 1. Handle JSON/String Image (e.g. image_url or image)
+            if (!empty($requestParams['image']) || !empty($requestParams['image_url'])) {
+                $imgUrl = !empty($requestParams['image']) ? $requestParams['image'] : $requestParams['image_url'];
+                $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 1)");
+                $imgStmt->execute([$productId, $imgUrl]);
+            }
 
-            // 1. Handle General Images (images[])
+            // 2. Handle File Upload Images (images[])
             if (isset($_FILES['images'])) {
                 $files = $_FILES['images'];
                 $count = is_array($files['name']) ? count($files['name']) : 1;
@@ -176,7 +207,7 @@ if ($method === 'POST') {
                         $newName = uniqid('prod_') . '_' . $i . '.' . $ext;
                         if (move_uploaded_file($tmpName, $uploadDir . $newName)) {
                             $imageUrl = "uploads/products/" . $newName;
-                            $isMain = ($i === 0) ? 1 : 0;
+                            $isMain = ($i === 0 && empty($requestParams['image'])) ? 1 : 0;
                             $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, ?)");
                             $imgStmt->execute([$productId, $imageUrl, $isMain]);
                         }
@@ -184,8 +215,7 @@ if ($method === 'POST') {
                 }
             }
 
-            // 2. Handle Variant Images (variant_images[])
-            // Note: The frontend will need to map these to the variants JSON
+            // 3. Handle Variant Images (variant_images[])
             if (isset($_FILES['variant_images'])) {
                 $vFiles = $_FILES['variant_images'];
                 $vCount = is_array($vFiles['name']) ? count($vFiles['name']) : 1;
@@ -197,7 +227,6 @@ if ($method === 'POST') {
                         $newName = uniqid('var_') . '_' . $i . '.' . $ext;
                         if (move_uploaded_file($tmpName, $uploadDir . $newName)) {
                             $imageUrl = "uploads/products/" . $newName;
-                            // Variant images are added to product_images but not as main
                             $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 0)");
                             $imgStmt->execute([$productId, $imageUrl]);
                         }
@@ -206,7 +235,7 @@ if ($method === 'POST') {
             }
 
             $db->commit();
-            die(json_encode(["status" => "success", "message" => "Product published with images.", "id" => $productId]));
+            die(json_encode(["status" => "success", "message" => "Product published successfully.", "id" => $productId]));
         } else {
             $db->rollBack();
             die(json_encode(["status" => "error", "message" => "Insert failed"]));
@@ -221,7 +250,6 @@ if ($method === 'POST') {
 
 // ---------------------------------------------------------
 // ROUTE 3: PUT / PATCH (Update Existing)
-// Only keys present in JSON body ($bodyData) override; others keep DB values (partial update).
 // ---------------------------------------------------------
 if ($method === 'PUT' || $method === 'PATCH') {
     if ($id <= 0) {
@@ -229,13 +257,16 @@ if ($method === 'PUT' || $method === 'PATCH') {
     }
 
     try {
-        $check = "SELECT p.id, p.category_id, p.name, p.description, p.price, p.discount_price, p.stock
-                  FROM products p
-                  JOIN sellers s ON p.seller_id = s.id
-                  WHERE p.id = :id AND s.user_id = :user_id";
-        $stmt = $db->prepare($check);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        if ($role === 'admin') {
+            $check = "SELECT p.* FROM products p WHERE p.id = :id";
+            $stmt = $db->prepare($check);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        } else {
+            $check = "SELECT p.* FROM products p JOIN sellers s ON p.seller_id = s.id WHERE p.id = :id AND s.user_id = :user_id";
+            $stmt = $db->prepare($check);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
@@ -245,7 +276,6 @@ if ($method === 'PUT' || $method === 'PATCH') {
 
         $db->beginTransaction();
 
-        // Unify data source: check JSON body first, then fallback to $_POST/GET ($requestParams)
         $body = !empty($bodyData) ? $bodyData : $requestParams;
 
         $cat = array_key_exists('category_id', $body) ? (int) $body['category_id'] : (int) $row['category_id'];
@@ -253,6 +283,7 @@ if ($method === 'PUT' || $method === 'PATCH') {
         $desc = array_key_exists('description', $body) ? $body['description'] : $row['description'];
         $price = array_key_exists('price', $body) ? $body['price'] : $row['price'];
         $stock = array_key_exists('stock', $body) ? (int) $body['stock'] : (int) $row['stock'];
+        $status = array_key_exists('status', $body) ? $body['status'] : ($row['status'] ?? 'active');
 
         if (array_key_exists('discount_price', $body)) {
             $dp = $body['discount_price'];
@@ -261,7 +292,7 @@ if ($method === 'PUT' || $method === 'PATCH') {
             $disc = $row['discount_price'];
         }
 
-        $sql = "UPDATE products SET category_id = :cat, name = :name, description = :desc, price = :price, discount_price = :disc, stock = :stock WHERE id = :id";
+        $sql = "UPDATE products SET category_id = :cat, name = :name, description = :desc, price = :price, discount_price = :disc, stock = :stock, status = :status WHERE id = :id";
         $stmt = $db->prepare($sql);
         $stmt->bindValue(':cat', $cat, PDO::PARAM_INT);
         $stmt->bindValue(':name', $name, PDO::PARAM_STR);
@@ -269,17 +300,22 @@ if ($method === 'PUT' || $method === 'PATCH') {
         $stmt->bindValue(':price', $price);
         $stmt->bindValue(':disc', $disc !== null && $disc !== '' ? $disc : null);
         $stmt->bindValue(':stock', $stock, PDO::PARAM_INT);
+        $stmt->bindValue(':status', $status, PDO::PARAM_STR);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
         $stmt->execute();
 
-        // --- IMAGE MANAGEMENT ---
+        // Update / Insert image URL if provided in JSON
+        if (!empty($body['image']) || !empty($body['image_url'])) {
+            $imgUrl = !empty($body['image']) ? $body['image'] : $body['image_url'];
+            $db->prepare("UPDATE product_images SET is_main = 0 WHERE product_id = ?")->execute([$id]);
+            $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 1)");
+            $imgStmt->execute([$id, $imgUrl]);
+        }
+
+        // Handle image removals/additions
         if (isset($body['existing_images'])) {
             $existingImages = json_decode($body['existing_images'], true) ?? [];
-            
-            // Normalize URLs to relative paths for DB comparison
-            // Example input: "http://localhost/ecom_app/uploads/products/xyz.jpg"
-            // DB contains: "uploads/products/xyz.jpg"
             $relativePaths = array_map(function($url) {
                 if (strpos($url, 'uploads/') !== false) {
                     return substr($url, strpos($url, 'uploads/'));
@@ -287,20 +323,16 @@ if ($method === 'PUT' || $method === 'PATCH') {
                 return $url;
             }, $existingImages);
 
-            // 1. Delete images not in the existing list
             if (!empty($relativePaths)) {
                 $placeholders = implode(',', array_fill(0, count($relativePaths), '?'));
                 $delQuery = "DELETE FROM product_images WHERE product_id = ? AND image_url NOT LIKE '%var_%' AND image_url NOT IN ($placeholders)";
                 $delStmt = $db->prepare($delQuery);
                 $delStmt->execute(array_merge([$id], $relativePaths));
             } else {
-                // If existing_images is empty, delete all current images (new ones might be added below)
-                // BUT DO NOT delete variant images!
                 $delStmt = $db->prepare("DELETE FROM product_images WHERE product_id = ? AND image_url NOT LIKE '%var_%'");
                 $delStmt->execute([$id]);
             }
 
-            // 2. Add new images
             if (isset($_FILES['new_images'])) {
                 $uploadDir = "../uploads/products/";
                 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
@@ -322,13 +354,12 @@ if ($method === 'PUT' || $method === 'PATCH') {
                 }
             }
 
-            // 3. Ensure one image is marked as main (the first one found)
             $db->prepare("UPDATE product_images SET is_main = 0 WHERE product_id = ? AND image_url NOT LIKE '%var_%'")->execute([$id]);
             $db->prepare("UPDATE product_images SET is_main = 1 WHERE product_id = ? AND image_url NOT LIKE '%var_%' ORDER BY id ASC LIMIT 1")->execute([$id]);
         }
 
         $db->commit();
-        echo json_encode(["status" => "success", "message" => "Product update successful."]);
+        echo json_encode(["status" => "success", "message" => "Product updated successfully."]);
         exit();
     } catch (Exception $e) {
         if ($db->inTransaction()) $db->rollBack();
@@ -341,37 +372,40 @@ if ($method === 'PUT' || $method === 'PATCH') {
 // ---------------------------------------------------------
 if ($method === 'DELETE') {
     $userId = $jwtHelper->validateTokenAndGetUserId();
+    $role = $jwtHelper->getRole();
     if (!$userId) {
         http_response_code(401);
         echo json_encode(["status" => "error", "message" => "Unauthorized"]);
         exit();
     }
 
-    $id = isset($_GET['id']) ? $_GET['id'] : null;
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
     if (!$id) {
         echo json_encode(["status" => "error", "message" => "Product ID required for deletion"]);
         exit();
     }
 
-    // Verify ownership
-    $query = "SELECT p.id FROM products p 
-              JOIN sellers s ON p.seller_id = s.id 
-              WHERE p.id = :id AND s.user_id = :user_id";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':id', $id);
-    $stmt->bindParam(':user_id', $userId);
-    $stmt->execute();
-    if (!$stmt->fetch()) {
-        http_response_code(403);
-        echo json_encode(["status" => "error", "message" => "Forbidden: Product not found or ownership missing"]);
-        exit();
+    // Verify ownership (Admin has full bypass)
+    if ($role !== 'admin') {
+        $query = "SELECT p.id FROM products p 
+                  JOIN sellers s ON p.seller_id = s.id 
+                  WHERE p.id = :id AND s.user_id = :user_id";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->execute();
+        if (!$stmt->fetch()) {
+            http_response_code(403);
+            echo json_encode(["status" => "error", "message" => "Forbidden: Product not found or ownership missing"]);
+            exit();
+        }
     }
 
     $query = "DELETE FROM products WHERE id = :id";
     $stmt = $db->prepare($query);
     $stmt->bindParam(':id', $id);
     if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Product deleted"]);
+        echo json_encode(["status" => "success", "message" => "Product deleted successfully"]);
     } else {
         $error = $stmt->errorInfo();
         echo json_encode(["status" => "error", "message" => "Failed to delete: " . $error[2]]);

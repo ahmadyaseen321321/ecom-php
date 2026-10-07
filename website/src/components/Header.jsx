@@ -82,8 +82,7 @@ export default function Header() {
               title="Open Side Menu"
               aria-label="Open Side Menu"
             >
-              <Menu size={16} />
-              <span>Menu</span>
+              <Menu size={22} strokeWidth={2.2} />
             </button>
 
             <a
@@ -235,14 +234,14 @@ export default function Header() {
                     )}
                     <div className="dropdown-item" onClick={() => {
                       setIsProfileMenuOpen(false);
-                      setActiveInfoModal('profile');
+                      navigateTo('profile');
                     }}>
                       <User size={16} />
                       <span>Profile</span>
                     </div>
                     <div className="dropdown-item" onClick={() => {
                       setIsProfileMenuOpen(false);
-                      setActiveInfoModal('settings');
+                      navigateTo('settings');
                     }}>
                       <Settings size={16} />
                       <span>Settings</span>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useCart } from '../context/CartContext';
+import { getImageUrl } from '../services/api';
 import {
   Printer,
   CheckCircle2,
@@ -9,33 +10,54 @@ import {
   Phone,
   Truck,
   CreditCard,
-  Clock
+  Clock,
+  ArrowLeft
 } from 'lucide-react';
 import './SellerOrderDetailPage.css';
 
-export default function SellerOrderDetailPage({ order, onBack }) {
+export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }) {
   const { showToast } = useCart();
 
   if (!order) return null;
+
+  const orderId = order.id || '#ORD-1';
+  const customerName = order.customer || order.customer_name || order.customerName || 'Customer';
+  const customerEmail = order.customer_email || (order.user_email) || 'customer@novanest.com';
+  const customerPhone = order.customer_phone || '+92 300 1234567';
+  const shippingAddress = order.shipping_address || 'Standard Delivery Address';
+  const paymentMethod = order.payment_method || 'Cash on Delivery';
+  const items = Array.isArray(order.items) && order.items.length > 0 ? order.items : [
+    {
+      name: order.product || order.product_name || 'Product Item',
+      quantity: 1,
+      price: order.total || order.total_amount || 0,
+      sku: `SKU-${order.id || '101'}`,
+      main_image: order.image || order.product_img
+    }
+  ];
+
+  const totalAmount = Number(order.total || order.total_amount || 0);
 
   return (
     <div className="seller-order-detail-page animate-fade-in">
       {/* Top Breadcrumb & Action Bar */}
       <div className="detail-breadcrumb-bar">
         <div className="breadcrumb-links">
-          <span className="b-link" onClick={onBack}>Orders</span>
+          <span className="b-link" onClick={onBack} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <ArrowLeft size={16} /> Back to Orders
+          </span>
           <span className="b-sep">&gt;</span>
-          <span className="b-curr">{order.id || '#ORD-2023-0892'}</span>
+          <span className="b-curr">{orderId}</span>
         </div>
 
         <div className="detail-actions-right">
-          <button className="btn-cancel-order" onClick={() => showToast('Cancellation initiated')}>
+          <button className="btn-cancel-order" onClick={() => showToast(`Cancellation initiated for ${orderId}`)}>
             Cancel Order
           </button>
-          <button className="btn-outline-dark" onClick={() => showToast('Opening customer contact chat...')}>
+          <button className="btn-outline-dark" onClick={() => onOpenOrderChat ? onOpenOrderChat(order) : showToast(`Opening chat with ${customerName}...`)}>
             Contact Customer
           </button>
-          <button className="btn-print-label" onClick={() => showToast('Printing shipping label...')}>
+          <button className="btn-print-label" onClick={() => showToast(`Printing shipping label for ${orderId}...`)}>
             <Printer size={16} />
             <span>Print Label</span>
           </button>
@@ -45,29 +67,29 @@ export default function SellerOrderDetailPage({ order, onBack }) {
       {/* Order Title & Status Banner */}
       <div className="order-detail-title-banner">
         <div className="title-status-flex">
-          <h1 className="order-main-h1">Order {order.id || '#ORD-2023-0892'}</h1>
-          <span className="order-status-pill green">{order.status || 'Ready to Ship'}</span>
+          <h1 className="order-main-h1">Order {orderId}</h1>
+          <span className={`order-status-pill green`}>{order.status || 'Ready to Ship'}</span>
         </div>
-        <p className="order-placed-time">{order.date || 'Oct 24, 2023 at 10:45 AM'}</p>
+        <p className="order-placed-time">{order.date || order.created_at || 'Recently placed'}</p>
       </div>
 
       {/* 4 Summary KPI Bar Cards */}
       <div className="seller-order-kpis-grid">
         <div className="s-kpi-card">
           <span className="s-kpi-label">TOTAL AMOUNT</span>
-          <div className="s-kpi-val">${order.total || '124.50'}</div>
+          <div className="s-kpi-val">Rs. {totalAmount.toLocaleString()}</div>
         </div>
         <div className="s-kpi-card">
-          <span className="s-kpi-label">ITEMS</span>
-          <div className="s-kpi-val">2</div>
+          <span className="s-kpi-label">TOTAL ITEMS</span>
+          <div className="s-kpi-val">{items.reduce((s, i) => s + (parseInt(i.quantity) || 1), 0)}</div>
         </div>
         <div className="s-kpi-card">
           <span className="s-kpi-label">PAYMENT</span>
-          <div className="s-kpi-val flex-check"><CheckCircle2 size={16} color="#16a34a" /> Paid</div>
+          <div className="s-kpi-val flex-check"><CheckCircle2 size={16} color="#16a34a" /> {paymentMethod}</div>
         </div>
         <div className="s-kpi-card">
           <span className="s-kpi-label">FULFILLMENT</span>
-          <div className="s-kpi-val flex-box"><Package size={16} color="#059669" /> Ready</div>
+          <div className="s-kpi-val flex-box"><Package size={16} color="#059669" /> {order.status || 'In Progress'}</div>
         </div>
       </div>
 
@@ -77,7 +99,7 @@ export default function SellerOrderDetailPage({ order, onBack }) {
         <div className="grid-left-column">
           {/* Items Ordered Table Card */}
           <div className="detail-card-panel">
-            <h3 className="panel-title">Items Ordered</h3>
+            <h3 className="panel-title">Items Ordered ({items.length})</h3>
             <table className="items-ordered-table">
               <thead>
                 <tr>
@@ -89,36 +111,29 @@ export default function SellerOrderDetailPage({ order, onBack }) {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>
-                    <div className="product-item-cell">
-                      <img src="https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=200&auto=format&fit=crop&q=80" alt="" />
-                      <div>
-                        <strong>Ceramic Pour-Over Dripper</strong>
-                        <span>Color: Forest Green</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="sku-code">CM-POD-FG</td>
-                  <td>1</td>
-                  <td>$45.00</td>
-                  <td className="text-right bold-txt">$45.00</td>
-                </tr>
-                <tr>
-                  <td>
-                    <div className="product-item-cell">
-                      <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=200&auto=format&fit=crop&q=80" alt="" />
-                      <div>
-                        <strong>Organic Single Origin Beans</strong>
-                        <span>Size: 12oz, Roast: Light</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="sku-code">CB-SO-12-L</td>
-                  <td>2</td>
-                  <td>$24.00</td>
-                  <td className="text-right bold-txt">$48.00</td>
-                </tr>
+                {items.map((item, idx) => {
+                  const itemImg = item.main_image ? getImageUrl(item.main_image) : 'https://placehold.co/60x60?text=Item';
+                  const unitPrice = parseFloat(item.price || 0);
+                  const qty = parseInt(item.quantity || 1);
+                  const lineTotal = unitPrice * qty;
+                  return (
+                    <tr key={idx}>
+                      <td>
+                        <div className="product-item-cell">
+                          <img src={itemImg} alt={item.name} onError={(e) => { e.target.src = 'https://placehold.co/60x60?text=Item'; }} />
+                          <div>
+                            <strong>{item.name || `Product #${item.product_id || idx + 1}`}</strong>
+                            <span>{item.variant_info || 'Standard Variant'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="sku-code">{item.sku || `SKU-${item.product_id || idx + 1}`}</td>
+                      <td>{qty}</td>
+                      <td>Rs. {unitPrice.toLocaleString()}</td>
+                      <td className="text-right bold-txt">Rs. {lineTotal.toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -132,13 +147,13 @@ export default function SellerOrderDetailPage({ order, onBack }) {
                 <h3>Customer Details</h3>
               </div>
               <div className="customer-info-block">
-                <strong className="c-name">{order.customer || 'Elena Jenkins'}</strong>
-                <span className="c-email"><Mail size={14} /> elena.j@example.com</span>
-                <span className="c-phone"><Phone size={14} /> +1 (555) 123-4567</span>
+                <strong className="c-name">{customerName}</strong>
+                <span className="c-email"><Mail size={14} /> {customerEmail}</span>
+                <span className="c-phone"><Phone size={14} /> {customerPhone}</span>
 
                 <div className="c-address-sec mt-16">
                   <span className="address-label">SHIPPING ADDRESS</span>
-                  <p>123 Grove Street<br />Apt 4B<br />Seattle, WA 98101<br />United States</p>
+                  <p>{shippingAddress}</p>
                 </div>
               </div>
             </div>
@@ -147,20 +162,20 @@ export default function SellerOrderDetailPage({ order, onBack }) {
             <div className="detail-card-panel flex-1">
               <div className="panel-header-icon">
                 <Truck size={18} />
-                <h3>Shipping Method</h3>
+                <h3>Shipping & Logistics</h3>
               </div>
               <div className="shipping-info-block">
-                <strong className="carrier-name">EcoExpress Priority</strong>
-                <span className="carrier-sub">Carbon-neutral delivery</span>
+                <strong className="carrier-name">Express Dispatch</strong>
+                <span className="carrier-sub">Tracked & Verified</span>
 
                 <div className="ship-meta-sec mt-16">
-                  <span className="address-label">TRACKING NUMBER</span>
-                  <p className="bold-p">Pending Generation</p>
+                  <span className="address-label">TRACKING ID</span>
+                  <p className="bold-p">TRK-{orderId.replace(/[^0-9]/g, '') || '9902'}</p>
                 </div>
 
                 <div className="ship-meta-sec mt-12">
-                  <span className="address-label">ESTIMATED DELIVERY</span>
-                  <p className="bold-p">Oct 28 - Oct 30, 2023</p>
+                  <span className="address-label">STATUS</span>
+                  <p className="bold-p">{order.status || 'Active Dispatch'}</p>
                 </div>
               </div>
             </div>
@@ -173,79 +188,33 @@ export default function SellerOrderDetailPage({ order, onBack }) {
           <div className="detail-card-panel">
             <div className="panel-header-icon">
               <CreditCard size={18} />
-              <h3>Payment Details</h3>
+              <h3>Payment Breakdown</h3>
             </div>
 
             <div className="financial-breakdown-lines">
               <div className="f-line">
-                <span>Subtotal (2 items)</span>
-                <span>$93.00</span>
+                <span>Subtotal ({items.length} items)</span>
+                <span>Rs. {totalAmount.toLocaleString()}</span>
               </div>
               <div className="f-line">
-                <span>Shipping Fee</span>
-                <span>$20.00</span>
+                <span>Delivery Charge</span>
+                <span>Rs. 0.00</span>
               </div>
               <div className="f-line">
                 <span>Tax</span>
-                <span>$11.50</span>
+                <span>Rs. 0.00</span>
               </div>
 
               <div className="f-divider"></div>
 
               <div className="f-line total-grand">
                 <span>Grand Total</span>
-                <span className="grand-val">${order.total || '124.50'}</span>
+                <span className="grand-val">Rs. {totalAmount.toLocaleString()}</span>
               </div>
 
               <div className="payment-method-badge-box">
-                <CreditCard size={18} color="#4b5563" />
-                <div>
-                  <strong>Paid via Credit Card</strong>
-                  <span>Visa ending in •••• 4242</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Order Timeline Card */}
-          <div className="detail-card-panel mt-20">
-            <div className="panel-header-icon">
-              <Clock size={18} />
-              <h3>Order Timeline</h3>
-            </div>
-
-            <div className="order-vertical-timeline">
-              <div className="timeline-item active">
-                <div className="t-icon checked">✓</div>
-                <div className="t-content">
-                  <strong>Ready to Ship</strong>
-                  <span>Waiting for carrier pickup</span>
-                  <span className="t-time">Oct 24, 2:15 PM</span>
-                </div>
-              </div>
-
-              <div className="timeline-item done">
-                <div className="t-icon checked-light">✓</div>
-                <div className="t-content">
-                  <strong>Order Processed</strong>
-                  <span className="t-time">Oct 24, 11:30 AM</span>
-                </div>
-              </div>
-
-              <div className="timeline-item done">
-                <div className="t-icon checked-light">✓</div>
-                <div className="t-content">
-                  <strong>Payment Confirmed</strong>
-                  <span className="t-time">Oct 24, 10:46 AM</span>
-                </div>
-              </div>
-
-              <div className="timeline-item done">
-                <div className="t-icon dot-grey">●</div>
-                <div className="t-content">
-                  <strong>Order Placed</strong>
-                  <span className="t-time">Oct 24, 10:45 AM</span>
-                </div>
+                <CreditCard size={16} />
+                <span>{paymentMethod}</span>
               </div>
             </div>
           </div>

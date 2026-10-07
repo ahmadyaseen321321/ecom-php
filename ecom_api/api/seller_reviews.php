@@ -1,8 +1,13 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 require_once '../core/database.php';
 require_once '../core/jwt_helper.php';
@@ -11,10 +16,15 @@ $database = new Database();
 $db = $database->getConnection();
 $jwtHelper = new JWTHelper();
 
+// Ensure reply columns exist in reviews table
+try { $db->exec("ALTER TABLE reviews ADD COLUMN reply TEXT NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE reviews ADD COLUMN replied_at DATETIME NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE reviews ADD COLUMN image_url VARCHAR(255) NULL"); } catch (Exception $e) {}
+
 $userId = $jwtHelper->validateTokenAndGetUserId();
 $role = $jwtHelper->getRole();
 
-if (!$userId || $role != 'seller') {
+if (!$userId || ($role != 'seller' && $role != 'admin')) {
     http_response_code(401);
     echo json_encode(["status" => "error", "message" => "Unauthorized access"]);
     exit();
@@ -27,38 +37,59 @@ $stmt->bindParam(':user_id', $userId);
 $stmt->execute();
 $seller = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$seller) {
-    echo json_encode(["status" => "error", "message" => "Seller account not found"]);
-    exit();
+if (!$seller && $role === 'admin') {
+    $seller = $db->query("SELECT id FROM sellers LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 }
 
-$sellerId = $seller['id'];
+$sellerId = $seller ? $seller['id'] : null;
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method == 'GET') {
     // Fetch reviews for products owned by this seller
     try {
-        $query = "SELECT 
-                    r.id, 
-                    p.name as product_name, 
-                    u.full_name as user_name, 
-                    r.rating, 
-                    r.comment, 
-                    r.image_url,
-                    r.reply,
-                    r.replied_at,
-                    r.created_at 
-                  FROM reviews r 
-                  JOIN products p ON r.product_id = p.id 
-                  JOIN users u ON r.user_id = u.id 
-                  WHERE p.seller_id = :seller_id 
-                  ORDER BY r.created_at DESC";
+        if ($sellerId) {
+            $query = "SELECT 
+                        r.id, 
+                        p.name as product_name, 
+                        u.full_name as user_name, 
+                        r.rating, 
+                        r.comment, 
+                        r.reply,
+                        r.replied_at,
+                        r.created_at 
+                      FROM reviews r 
+                      JOIN products p ON r.product_id = p.id 
+                      JOIN users u ON r.user_id = u.id 
+                      WHERE p.seller_id = :seller_id 
+                      ORDER BY r.created_at DESC";
 
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(':seller_id', $sellerId);
-        $stmt->execute();
-        $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(':seller_id', $sellerId);
+            $stmt->execute();
+            $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $reviews = [];
+        }
+
+        // Fallback for admin if seller has no reviews
+        if (empty($reviews) && $role === 'admin') {
+            $query = "SELECT 
+                        r.id, 
+                        p.name as product_name, 
+                        u.full_name as user_name, 
+                        r.rating, 
+                        r.comment, 
+                        r.reply,
+                        r.replied_at,
+                        r.created_at 
+                      FROM reviews r 
+                      JOIN products p ON r.product_id = p.id 
+                      JOIN users u ON r.user_id = u.id 
+                      ORDER BY r.created_at DESC";
+            $stmt = $db->query($query);
+            $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         echo json_encode([
             "status" => "success",
@@ -88,19 +119,21 @@ if ($method == 'GET') {
     }
 
     try {
-        // First, verify the seller owns the product associated with this review
-        $verifyQuery = "SELECT r.id FROM reviews r 
-                        JOIN products p ON r.product_id = p.id 
-                        WHERE r.id = :review_id AND p.seller_id = :seller_id";
-        $vStmt = $db->prepare($verifyQuery);
-        $vStmt->bindParam(':review_id', $review_id);
-        $vStmt->bindParam(':seller_id', $sellerId);
-        $vStmt->execute();
+        // If not admin, verify ownership
+        if ($role !== 'admin' && $sellerId) {
+            $verifyQuery = "SELECT r.id FROM reviews r 
+                            JOIN products p ON r.product_id = p.id 
+                            WHERE r.id = :review_id AND p.seller_id = :seller_id";
+            $vStmt = $db->prepare($verifyQuery);
+            $vStmt->bindParam(':review_id', $review_id);
+            $vStmt->bindParam(':seller_id', $sellerId);
+            $vStmt->execute();
 
-        if (!$vStmt->fetch()) {
-            http_response_code(403);
-            echo json_encode(["status" => "error", "message" => "Unauthorized: You do not own the product for this review"]);
-            exit();
+            if (!$vStmt->fetch()) {
+                http_response_code(403);
+                echo json_encode(["status" => "error", "message" => "Unauthorized: You do not own the product for this review"]);
+                exit();
+            }
         }
 
         // Update the review with the reply
@@ -116,7 +149,7 @@ if ($method == 'GET') {
         }
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "Server Error: " . $e->getMessage()]);
+        echo json_encode(["status" => "error", "message" => "Server error: " . $e->getMessage()]);
     }
 } else {
     http_response_code(405);

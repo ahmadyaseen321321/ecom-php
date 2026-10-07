@@ -270,7 +270,7 @@
   color: #374151;
 }
 
-.input-with-icon {
+.seller-settings-page .input-with-icon {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -281,17 +281,17 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.input-with-icon:focus-within {
+.seller-settings-page .input-with-icon:focus-within {
   border-color: #283A2E;
   box-shadow: 0 0 0 3px rgba(40, 58, 46, 0.08);
 }
 
-.input-with-icon .field-icon {
+.seller-settings-page .input-with-icon .field-icon {
   color: #9ca3af;
   flex-shrink: 0;
 }
 
-.input-with-icon input {
+.seller-settings-page .input-with-icon input {
   flex: 1;
   border: none;
   outline: none;
@@ -301,7 +301,7 @@
   background: transparent;
 }
 
-.input-with-icon input::placeholder {
+.seller-settings-page .input-with-icon input::placeholder {
   color: #9ca3af;
 }
 

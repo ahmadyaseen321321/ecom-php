@@ -16,12 +16,19 @@ import { useCart } from '../context/CartContext';
 import { loginUser, registerUser, verifyOtpApi } from '../services/api';
 import './AuthModal.css';
 
-export default function AuthModal({ isOpen, onClose }) {
+export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   // Mode can be: 'login' | 'signup' | 'otp'
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(initialMode || 'login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login, navigateTo, showToast } = useCart();
+
+  useEffect(() => {
+    if (isOpen && initialMode) {
+      setMode(initialMode);
+      setError('');
+    }
+  }, [isOpen, initialMode]);
 
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -238,11 +245,8 @@ export default function AuthModal({ isOpen, onClose }) {
         <nav className="auth-header-nav">
           <span className="auth-nav-link" onClick={() => { onClose(); navigateTo('home'); }}>Home</span>
           <span className="auth-nav-link" onClick={() => { onClose(); navigateTo('shop'); }}>Shop</span>
-          <span className="auth-nav-link">About</span>
-          <span className="auth-nav-link">Contact</span>
-          <button className="auth-close-btn" onClick={onClose} title="Close">
-            <X size={20} />
-          </button>
+          <span className="auth-nav-link" onClick={() => { onClose(); navigateTo('about'); }}>About</span>
+          <span className="auth-nav-link" onClick={() => { onClose(); navigateTo('contact'); }}>Contact</span>
         </nav>
       </header>
 
@@ -279,11 +283,13 @@ export default function AuthModal({ isOpen, onClose }) {
 
         {/* Right Side: Form / Screen Content */}
         <div className="auth-form-side">
-          {/* Logo at Top Right Content Header */}
-          <div className="auth-content-brand">
-            <Leaf size={22} className="brand-leaf-icon" />
-            <span className="brand-title">Novanest</span>
-          </div>
+          {/* Logo at Top Right Content Header on Login */}
+          {mode === 'login' && (
+            <div className="auth-content-brand">
+              <Leaf size={22} className="brand-leaf-icon" />
+              <span className="brand-title">Novanest</span>
+            </div>
+          )}
 
           {/* LOGIN SCREEN */}
           {mode === 'login' && (
@@ -439,58 +445,60 @@ export default function AuthModal({ isOpen, onClose }) {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Phone Number</label>
-                  <div className="input-with-icon">
-                    <Phone className="input-icon" size={18} />
-                    <input
-                      type="tel"
-                      required
-                      placeholder="+1 (555) 000-0000"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
+                <div className="name-row">
+                  <div className="form-group">
+                    <label>Phone Number</label>
+                    <div className="input-with-icon">
+                      <Phone className="input-icon" size={18} />
+                      <input
+                        type="tel"
+                        required
+                        placeholder="+1 (555) 000-0000"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Age (Optional)</label>
+                    <div className="input-with-icon">
+                      <Calendar className="input-icon" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Your age"
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Age (Optional)</label>
-                  <div className="input-with-icon">
-                    <Calendar className="input-icon" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Your age"
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
-                    />
+                <div className="name-row">
+                  <div className="form-group">
+                    <label>Password</label>
+                    <div className="input-with-icon">
+                      <Lock className="input-icon" size={18} />
+                      <input
+                        type="password"
+                        required
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
                   </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Password</label>
-                  <div className="input-with-icon">
-                    <Lock className="input-icon" size={18} />
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Confirm Password</label>
-                  <div className="input-with-icon">
-                    <ShieldCheck className="input-icon" size={18} />
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
+                  <div className="form-group">
+                    <label>Confirm Password</label>
+                    <div className="input-with-icon">
+                      <ShieldCheck className="input-icon" size={18} />
+                      <input
+                        type="password"
+                        required
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
 

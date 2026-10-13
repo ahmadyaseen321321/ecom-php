@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ShoppingBag, Search, User, Menu, X, MoreVertical, Settings, LogOut, Eye, ArrowRight, Sparkles, Store } from 'lucide-react';
+import { ShoppingBag, Search, User, Menu, X, MoreVertical, Settings, LogOut, Eye, ArrowRight, Sparkles, Store, Bell } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useSocket } from '../context/SocketContext';
+import NotificationCenter from './NotificationCenter';
 import { SEASONAL_ARCHIVE_PRODUCTS, JUST_LANDED_PRODUCTS, DISCOVER_PRODUCTS } from '../data/mockProducts';
 import './Header.css';
 
@@ -21,8 +23,11 @@ export default function Header() {
     currentPage
   } = useCart();
 
+  const { unreadNotifCount, isConnected } = useSocket();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchContainerRef = useRef(null);
 
@@ -189,6 +194,28 @@ export default function Header() {
             </div>
 
             <div className="header-actions-group">
+              {/* Notification Center Trigger */}
+              <div className="notif-header-container" style={{ position: 'relative' }}>
+                <button
+                  className={`pill-action-btn notif-btn ${unreadNotifCount > 0 ? 'has-unread' : ''}`}
+                  onClick={() => setIsNotifOpen(!isNotifOpen)}
+                  title="Notifications & Updates"
+                  aria-label="Notifications & Updates"
+                >
+                  <Bell size={18} />
+                  {unreadNotifCount > 0 && (
+                    <span className="action-badge notif-badge animate-pulse">
+                      {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                    </span>
+                  )}
+                </button>
+
+                <NotificationCenter
+                  isOpen={isNotifOpen}
+                  onClose={() => setIsNotifOpen(false)}
+                />
+              </div>
+
               <button
                 className="pill-action-btn cart-btn"
                 onClick={() => navigateTo('cart')}

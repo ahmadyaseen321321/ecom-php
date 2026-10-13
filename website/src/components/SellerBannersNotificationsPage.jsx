@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
+import { useSocket } from '../context/SocketContext';
 import {
   Image,
   Upload,
@@ -25,6 +26,7 @@ const DEMO_USERS = [
 
 export default function SellerBannersNotificationsPage() {
   const { showToast } = useCart();
+  const { emitNotification } = useSocket();
 
   // ─── Banner State ───
   const [banners, setBanners] = useState([
@@ -110,13 +112,22 @@ export default function SellerBannersNotificationsPage() {
       ? 'All Users'
       : selectedUsers.map((u) => u.name).join(', ');
 
+    // Emit Real-Time Broadcast / Targeted Notification via Socket.IO
+    emitNotification({
+      type: 'promo',
+      title: notifSubject,
+      message: notifBody,
+      targetRole: notifTarget === 'all' ? null : null,
+      targetUserId: notifTarget === 'specific' && selectedUsers.length === 1 ? selectedUsers[0].id : null
+    });
+
     setSentNotifications((prev) => [
       {
         id: `n${Date.now()}`,
         subject: notifSubject,
         target: targetLabel,
         date: 'Just now',
-        status: 'Sending...',
+        status: 'Delivered',
       },
       ...prev,
     ]);

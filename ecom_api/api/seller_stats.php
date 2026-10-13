@@ -62,13 +62,17 @@ $sellerId = $seller['id'];
 $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
 
 // Get Stats
-// 1. Total Sales (Delivered in timeframe)
-$query = "SELECT SUM(o.total_amount) as total_sales FROM orders o 
+// 1. Total Sales for this seller's line items in the timeframe.
+//    Orders count as soon as they are placed (only cancelled/returned are
+//    excluded) so the dashboard moves the moment a seller receives an order,
+//    instead of staying at 0 until something is delivered. Line-item revenue is
+//    used so multi-item orders are not double counted by the JOIN.
+$query = "SELECT COALESCE(SUM(oi.quantity * oi.price), 0) as total_sales FROM orders o 
           JOIN order_items oi ON o.id = oi.order_id 
           JOIN products p ON oi.product_id = p.id 
           WHERE p.seller_id = :seller_id 
-          AND o.order_status = 'delivered'
-          AND o.updated_at >= DATE_SUB(NOW(), INTERVAL :days DAY)";
+          AND o.order_status NOT IN ('cancelled', 'returned')
+          AND o.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)";
 $stmt = $db->prepare($query);
 $stmt->bindParam(':seller_id', $sellerId);
 $stmt->bindParam(':days', $days, PDO::PARAM_INT);
@@ -76,13 +80,13 @@ $stmt->execute();
 $sales = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // 1b. Previous Total Sales (for percentage calculation)
-$query = "SELECT SUM(o.total_amount) as total_sales FROM orders o 
+$query = "SELECT COALESCE(SUM(oi.quantity * oi.price), 0) as total_sales FROM orders o 
           JOIN order_items oi ON o.id = oi.order_id 
           JOIN products p ON oi.product_id = p.id 
           WHERE p.seller_id = :seller_id 
-          AND o.order_status = 'delivered'
-          AND o.updated_at >= DATE_SUB(NOW(), INTERVAL :days2 DAY)
-          AND o.updated_at < DATE_SUB(NOW(), INTERVAL :days DAY)";
+          AND o.order_status NOT IN ('cancelled', 'returned')
+          AND o.created_at >= DATE_SUB(NOW(), INTERVAL :days2 DAY)
+          AND o.created_at < DATE_SUB(NOW(), INTERVAL :days DAY)";
 $stmt = $db->prepare($query);
 $days2 = $days * 2;
 $stmt->bindParam(':seller_id', $sellerId);
@@ -131,7 +135,7 @@ $query = "SELECT
           JOIN order_items oi ON o.id = oi.order_id 
           JOIN products p ON oi.product_id = p.id 
           WHERE p.seller_id = :seller_id
-          AND o.updated_at >= DATE_SUB(NOW(), INTERVAL :days DAY)";
+          AND o.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)";
 $stmt = $db->prepare($query);
 $stmt->bindParam(':seller_id', $sellerId);
 $stmt->bindParam(':days', $days, PDO::PARAM_INT);
@@ -149,12 +153,12 @@ for ($i = $days - 1; $i >= 0; $i--) {
     ];
 }
 
-$query = "SELECT DATE(o.created_at) as date_val, SUM(o.total_amount) as total_value 
+$query = "SELECT DATE(o.created_at) as date_val, SUM(oi.quantity * oi.price) as total_value 
           FROM orders o 
           JOIN order_items oi ON o.id = oi.order_id 
           JOIN products p ON oi.product_id = p.id 
           WHERE p.seller_id = :seller_id 
-          AND o.order_status = 'delivered'
+          AND o.order_status NOT IN ('cancelled', 'returned')
           AND DATE(o.created_at) > DATE_SUB(CURDATE(), INTERVAL :days DAY)
           GROUP BY DATE(o.created_at)
           ORDER BY DATE(o.created_at) ASC";
@@ -186,6 +190,77 @@ $stmt->bindParam(':seller_id', $sellerId);
 $stmt->execute();
 $feedbackStats = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// 8. Sales by category in the timeframe (drives the pie chart)
+$query = "SELECT COALESCE(c.name, 'Uncategorized') as name,
+            COALESCE(SUM(oi.quantity), 0) as units,
+            COALESCE(SUM(oi.quantity * oi.price), 0) as revenue
+          FROM orders o
+          JOIN order_items oi ON o.id = oi.order_id
+          JOIN products p ON oi.product_id = p.id
+          LEFT JOIN categories c ON p.category_id = c.id
+          WHERE p.seller_id = :seller_id
+          AND o.order_status NOT IN ('cancelled', 'returned')
+          AND o.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+          GROUP BY c.id, c.name
+          HAVING revenue > 0
+          ORDER BY revenue DESC";
+$stmt = $db->prepare($query);
+$stmt->bindParam(':seller_id', $sellerId);
+$stmt->bindParam(':days', $days, PDO::PARAM_INT);
+$stmt->execute();
+$categorySales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// 9. Monthly goal metrics — this calendar month vs the previous one
+$monthStart = date('Y-m-01 00:00:00');
+$prevMonthStart = date('Y-m-01 00:00:00', strtotime('-1 month'));
+// Derived from the 1st so month-end dates (Jan 31) never roll two months forward
+$nextMonthStart = date('Y-m-01 00:00:00', strtotime($monthStart . ' +1 month'));
+
+$monthlyQuery = "SELECT
+    COALESCE(SUM(CASE WHEN o.created_at >= :m_start AND o.created_at < :m_end
+                      THEN oi.quantity * oi.price END), 0) as month_revenue,
+    COALESCE(SUM(CASE WHEN o.created_at >= :p_start AND o.created_at < :p_end
+                      THEN oi.quantity * oi.price END), 0) as prev_month_revenue
+  FROM orders o
+  JOIN order_items oi ON o.id = oi.order_id
+  JOIN products p ON oi.product_id = p.id
+  WHERE p.seller_id = :seller_id
+  AND o.order_status NOT IN ('cancelled', 'returned')
+  AND o.created_at >= :p_start2";
+$stmt = $db->prepare($monthlyQuery);
+$stmt->bindParam(':seller_id', $sellerId);
+$stmt->bindParam(':m_start', $monthStart);
+$stmt->bindParam(':m_end', $nextMonthStart);
+$stmt->bindParam(':p_start', $prevMonthStart);
+$stmt->bindParam(':p_end', $monthStart);
+$stmt->bindParam(':p_start2', $prevMonthStart);
+$stmt->execute();
+$monthly = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// New customers = buyers whose FIRST order with this seller falls in the month
+$newCustQuery = "SELECT COUNT(*) as cnt FROM (
+    SELECT o.user_id
+    FROM orders o
+    JOIN order_items oi ON o.id = oi.order_id
+    JOIN products p ON oi.product_id = p.id
+    WHERE p.seller_id = :seller_id
+    AND o.order_status NOT IN ('cancelled', 'returned')
+    GROUP BY o.user_id
+    HAVING MIN(o.created_at) >= :m_start AND MIN(o.created_at) < :m_end
+  ) t";
+$monthMetrics = ['month_new_customers' => 0, 'prev_month_new_customers' => 0];
+foreach ([['m_start' => $monthStart, 'm_end' => $nextMonthStart, 'key' => 'month_new_customers'],
+          ['m_start' => $prevMonthStart, 'm_end' => $monthStart, 'key' => 'prev_month_new_customers']] as $range) {
+    $rStart = $range['m_start'];
+    $rEnd = $range['m_end'];
+    $stmt = $db->prepare($newCustQuery);
+    $stmt->bindParam(':seller_id', $sellerId);
+    $stmt->bindParam(':m_start', $rStart);
+    $stmt->bindParam(':m_end', $rEnd);
+    $stmt->execute();
+    $monthMetrics[$range['key']] = (int) $stmt->fetchColumn();
+}
+
 echo json_encode([
     "status" => "success",
     "data" => [
@@ -202,7 +277,18 @@ echo json_encode([
         "delivered_count" => (int) ($statusCounts['delivered_count'] ?? 0),
         "returned_count" => (int) ($statusCounts['returned_count'] ?? 0),
         "cancelled_count" => (int) ($statusCounts['cancelled_count'] ?? 0),
-        "chart_data" => $chartData
+        "chart_data" => $chartData,
+        "category_sales" => array_map(function ($r) {
+            return [
+                "name" => $r['name'],
+                "units" => (int) $r['units'],
+                "revenue" => (float) $r['revenue']
+            ];
+        }, $categorySales),
+        "month_revenue" => round((float) ($monthly['month_revenue'] ?? 0), 2),
+        "prev_month_revenue" => round((float) ($monthly['prev_month_revenue'] ?? 0), 2),
+        "month_new_customers" => $monthMetrics['month_new_customers'],
+        "prev_month_new_customers" => $monthMetrics['prev_month_new_customers']
     ]
 ]);
 

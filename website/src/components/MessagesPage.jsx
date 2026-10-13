@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   ShoppingBag,
@@ -12,36 +12,164 @@ import {
   Loader,
   MessageCircle,
   Package,
-  ArrowRight
+  ArrowRight,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { fetchConversationsApi, fetchOrderChatApi, sendOrderChatApi, fetchOrdersApi, getImageUrl } from '../services/api';
+import { useSocket } from '../context/SocketContext';
+import { fetchConversationsApi, fetchOrderChatApi, sendOrderChatApi, sendOrderChatFilesApi, validateChatFiles, fetchOrdersApi, getImageUrl } from '../services/api';
+import ChatAttachment from './ChatAttachment';
 import './MessagesPage.css';
 
 export default function MessagesPage() {
-  const { navigateTo, user, openLoginModal, openSignupModal } = useCart();
-  const [conversations, setConversations] = useState([]);
-  const [activeId, setActiveId] = useState(null);
+  const { navigateTo, user, openLoginModal, openSignupModal, showToast } = useCart();
+  const { socket, isConnected, sendMessage: sendSocketMessage, joinOrder, leaveOrder } = useSocket();
+  const [conversations, setConversations] = useState(() => {
+    try {
+      const cached = localStorage.getItem('conversations_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [activeId, setActiveId] = useState(() => {
+    try {
+      const cached = localStorage.getItem('conversations_cache');
+      if (cached) {
+        const convs = JSON.parse(cached);
+        return convs[0]?.id || null;
+      }
+    } catch {}
+    return null;
+  });
   const [activeTab, setActiveTab] = useState('All');
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Restore cached messages instantly so screen isn't blank on return
+  const [chatMessages, setChatMessages] = useState(() => {
+    try {
+      const cached = localStorage.getItem('chat_messages_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  // Start as false if we already have cached data — no spinner needed
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const hasCachedConvs = !!localStorage.getItem('conversations_cache');
+      return !hasCachedConvs;
+    } catch { return true; }
+  });
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // ─── Attachments (image / video) ─────────────────────────────
+  const openFilePicker = (accept) => {
+    if (!fileInputRef.current) return;
+    fileInputRef.current.setAttribute('accept', accept);
+    fileInputRef.current.value = '';
+    fileInputRef.current.click();
+  };
+
+  const handleFilesSelected = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length || !activeConv) return;
+
+    const sizeProblem = validateChatFiles(files);
+    if (sizeProblem) {
+      showToast(sizeProblem);
+      return;
+    }
+
+    const rawOrderId = activeConv.orderId || 'GENERAL';
+    const orderIdentifier = rawOrderId === 'GENERAL'
+      ? 'GENERAL'
+      : rawOrderId.replace(/[^0-9]/g, '') || rawOrderId;
+
+    // Same id is sent with the socket payload and to the API, so the echo of
+    // this message matches the optimistic bubble instead of duplicating it
+    const clientId = `client_${Date.now()}`;
+    const localPreview = files.map((f) => URL.createObjectURL(f)).join(',');
+    const mimeTypes = files.map((f) => f.type || '').join(',');
+
+    setChatMessages((prev) => [...prev, {
+      id: clientId,
+      sender: 'me',
+      text: '',
+      attachment: localPreview,
+      attachment_mime: mimeTypes,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
+
+    setIsUploading(true);
+    try {
+      const res = await sendOrderChatFilesApi(orderIdentifier, '', 'customer', files, clientId);
+      const savedUrl = res?.attachment_url || res?.data?.attachment_url;
+
+      if (!savedUrl) {
+        // Nothing was stored server-side. Drop the bubble rather than
+        // broadcasting a blob: URL that only exists in this browser tab.
+        setChatMessages((prev) => prev.filter((m) => m.id !== clientId));
+        showToast('Attachment upload failed — please try again');
+        return;
+      }
+
+      // Replace the local blob preview with the persisted URL
+      setChatMessages((prev) => prev.map((m) => (
+        m.id === clientId ? { ...m, attachment: savedUrl, attachment_mime: null } : m
+      )));
+
+      // Real-time delivery to the seller (identical id → receiver dedupes)
+      sendSocketMessage({
+        id: clientId,
+        orderId: orderIdentifier,
+        message: '',
+        senderType: 'customer',
+        senderName: user?.full_name || user?.name || 'Customer',
+        attachmentUrl: savedUrl
+      });
+    } catch (err) {
+      console.warn('[Chat] Attachment upload failed:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    try {
+      if (chatMessages.length > 0) {
+        localStorage.setItem('chat_messages_cache', JSON.stringify(chatMessages.slice(-100)));
+      }
+    } catch {}
+  }, [chatMessages]);
 
   useEffect(() => {
     if (user) {
       loadConversations();
     } else {
+      // Clear cached messages when user logs out
+      try {
+        localStorage.removeItem('chat_messages_cache');
+        localStorage.removeItem('conversations_cache');
+      } catch {}
       setIsLoading(false);
     }
   }, [user]);
 
   const loadConversations = async () => {
-    setIsLoading(true);
+    const hasCached = conversations.length > 0;
+    if (!hasCached) setIsLoading(true);
     try {
-      // Load user's real orders to build 1 unified store conversation
-      const ordersRes = await fetchOrdersApi();
+      // Only fetch the latest order for the messages screen — passing limit=1 avoids
+      // loading all 100+ orders just to display one conversation entry
+      const ordersRes = await fetchOrdersApi(1);
       const ordersList = Array.isArray(ordersRes) ? ordersRes : (ordersRes?.data || []);
       
       if (ordersList.length > 0) {
@@ -57,9 +185,7 @@ export default function MessagesPage() {
           avatarImg: null,
           online: true,
           time: latestOrder.created_at ? new Date(latestOrder.created_at).toLocaleDateString() : 'Recent',
-          preview: ordersList.length > 1 
-            ? `${ordersList.length} Orders • Latest ${latestOrderId} (Rs. ${totalAmount})`
-            : `Order ${latestOrderId} • Rs. ${totalAmount}`,
+          preview: `Latest Order ${latestOrderId} • Rs. ${totalAmount}`,
           unread: false,
           orders: ordersList,
           messages: []
@@ -67,6 +193,8 @@ export default function MessagesPage() {
 
         setConversations([singleStoreConv]);
         setActiveId(singleStoreConv.id);
+        try { localStorage.setItem('conversations_cache', JSON.stringify([singleStoreConv])); } catch {}
+        // Don't await — let the UI render immediately, messages load in background
         loadAllUserChatMessages(ordersList, latestOrderId);
       } else {
         const defaultConv = {
@@ -84,6 +212,7 @@ export default function MessagesPage() {
         };
         setConversations([defaultConv]);
         setActiveId(defaultConv.id);
+        try { localStorage.setItem('conversations_cache', JSON.stringify([defaultConv])); } catch {}
         loadChatMessages('GENERAL');
       }
     } catch (err) {
@@ -96,39 +225,33 @@ export default function MessagesPage() {
 
   const loadAllUserChatMessages = async (ordersList, fallbackOrderId) => {
     try {
-      const orderIds = (ordersList && ordersList.length > 0)
-        ? ordersList.map(o => String(o.id).startsWith('#') ? o.id : `#ORD-${o.id}`)
-        : [fallbackOrderId];
+      // Only fetch the latest order's messages on initial load — fetching all orders
+      // causes N parallel API calls (e.g. 115 orders = 115 requests) which is very slow.
+      // Additional order chats can be loaded on demand when the user selects them.
+      const latestId = ordersList && ordersList.length > 0
+        ? String(ordersList[0].id).replace(/[^0-9]/g, '') || String(ordersList[0].id)
+        : (fallbackOrderId.replace(/[^0-9]/g, '') || fallbackOrderId);
 
-      const uniqueOrderIds = [...new Set(orderIds)];
-      const results = await Promise.all(uniqueOrderIds.map(oid => fetchOrderChatApi(oid).catch(() => null)));
+      const res = await fetchOrderChatApi(latestId).catch(() => null);
+      const list = res?.messages || res?.data || [];
 
-      const allRaw = [];
-      results.forEach(res => {
-        const list = res?.messages || res?.data || [];
-        if (Array.isArray(list)) {
-          list.forEach(m => {
-            if (!allRaw.some(existing => existing.id === m.id)) {
-              allRaw.push(m);
-            }
-          });
-        }
-      });
-
-      allRaw.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-
-      if (allRaw.length > 0) {
-        setChatMessages(allRaw.map(m => ({
+      if (Array.isArray(list) && list.length > 0) {
+        const sorted = [...list].sort((a, b) =>
+          new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        );
+        setChatMessages(sorted.map(m => ({
           id: m.id,
           sender: m.sender_type === 'customer' ? 'me' : 'them',
           text: m.message || m.text || '',
+          attachment: m.attachment_url || null,
+          attachment_mime: m.attachment_mime || null,
           time: m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'
         })));
       } else {
         setChatMessages([]);
       }
     } catch (err) {
-      console.warn('Error loading all user chat messages:', err);
+      console.warn('Error loading user chat messages:', err);
       setChatMessages([]);
     }
   };
@@ -143,6 +266,8 @@ export default function MessagesPage() {
           id: m.id,
           sender: m.sender_type === 'customer' ? 'me' : 'them',
           text: m.message || m.text || '',
+          attachment: m.attachment_url || null,
+          attachment_mime: m.attachment_mime || null,
           time: m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'
         })));
       } else {
@@ -154,41 +279,100 @@ export default function MessagesPage() {
     }
   };
 
+  const activeConv = conversations.find(
+    (c) => String(c.id) === String(activeId) || String(c.orderId) === String(activeId)
+  ) || conversations[0] || null;
+
+  const activeConvRef = useRef(null);
+  useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
+
+  // Single stable socket listener — uses ref so no stale closure issues
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (msg) => {
+      console.log('[MSG] received', msg);
+      setChatMessages(prev => {
+        const id = msg.id || `live_${Date.now()}`;
+        if (prev.some(m => m.id === id)) return prev;
+        const senderType = msg.sender_type || msg.senderType || '';
+        return [...prev, {
+          id,
+          sender: senderType === 'seller' ? 'them' : 'me',
+          text: msg.message || msg.text || '',
+          attachment: msg.attachment_url || msg.attachmentUrl || null,
+          attachment_mime: msg.attachment_mime || null,
+          time: msg.created_at
+            ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now',
+        }];
+      });
+    };
+    socket.on('receive_message', handler);
+    return () => socket.off('receive_message', handler);
+  }, [socket]);
+
+  // Join socket room whenever the active conversation changes
+  // Always use the clean numeric ID so we land in the same room as the seller.
+  // Keyed on the ROOM ID (a stable string) instead of the conversation object,
+  // otherwise every conversations reload tears the room down and re-creates it.
+  const activeRoomId = (() => {
+    const rawId = activeConv?.orderId || 'GENERAL';
+    return rawId === 'GENERAL' ? 'GENERAL' : rawId.replace(/[^0-9]/g, '') || rawId;
+  })();
+
+  useEffect(() => {
+    if (!activeRoomId || !socket) return;
+    if (joinOrder) joinOrder(activeRoomId);
+    return () => {
+      if (leaveOrder) leaveOrder(activeRoomId);
+    };
+  }, [activeRoomId, socket]);
+
   const handleSelectConversation = (conv) => {
     const selectedId = conv.id || conv.orderId;
     setActiveId(selectedId);
     loadChatMessages(conv.orderId || conv.id);
   };
 
-  const activeConv = conversations.find(
-    (c) => String(c.id) === String(activeId) || String(c.orderId) === String(activeId)
-  ) || conversations[0] || null;
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
     const textToSend = inputText.trim();
-    const orderIdentifier = activeConv?.orderId || (activeId ? `#ORD-${activeId}` : 'GENERAL');
+    const rawOrderId     = activeConv?.orderId || 'GENERAL';
+    // Store with numeric ID for DB, emit with same for socket room matching
+    const orderIdentifier = rawOrderId === 'GENERAL'
+      ? 'GENERAL'
+      : rawOrderId.replace(/[^0-9]/g, '') || rawOrderId;
 
     const newMsg = {
-      id: Date.now(),
+      id:     `client_${Date.now()}`,
       sender: 'me',
-      text: textToSend,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      text:   textToSend,
+      time:   new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setChatMessages(prev => [...prev, newMsg]);
+    // Instant optimistic add + clear input
+    setChatMessages((prev) => {
+      const updated = [...prev, newMsg];
+      try { localStorage.setItem('chat_messages_cache', JSON.stringify(updated.slice(-100))); } catch {}
+      return updated;
+    });
     setInputText('');
-    setIsSending(true);
 
-    try {
-      await sendOrderChatApi(orderIdentifier, textToSend, 'customer');
-    } catch (err) {
-      console.warn('Failed to post message online:', err);
-    } finally {
-      setIsSending(false);
-    }
+    // Emit via Socket.IO — server broadcasts to the order room instantly
+    sendSocketMessage({
+      id:         newMsg.id,
+      orderId:    orderIdentifier,
+      message:    textToSend,
+      senderType: 'customer',
+      senderName: user?.full_name || user?.name || 'Customer',
+    });
+
+    // Persist to DB in background
+    sendOrderChatApi(orderIdentifier, textToSend, 'customer', newMsg.id).catch((err) => {
+      console.warn('[Chat] DB persist failed:', err);
+    });
   };
 
   const filteredConversations = conversations.filter((c) => {
@@ -482,7 +666,8 @@ export default function MessagesPage() {
 
                         <div className="msg-bubble-group">
                           <div className="msg-bubble">
-                            <p>{msg.text}</p>
+                            {msg.text ? <p>{msg.text}</p> : null}
+                            <ChatAttachment url={msg.attachment} mimes={msg.attachment_mime} />
                           </div>
                           {msg.time && <span className="msg-time">{msg.time}</span>}
                         </div>
@@ -490,19 +675,41 @@ export default function MessagesPage() {
                     );
                   })
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input Bar */}
               <div className="chat-input-wrapper">
                 <form className="chat-input-box" onSubmit={handleSendMessage}>
                   <div className="input-attachments">
-                    <button type="button" className="attachment-btn" title="Add Image">
+                    <button
+                      type="button"
+                      className="attachment-btn"
+                      title="Add Image or Video"
+                      onClick={() => openFilePicker('image/*,video/*')}
+                      disabled={isUploading}
+                    >
                       <ImageIcon size={18} />
                     </button>
-                    <button type="button" className="attachment-btn" title="Attach File">
+                    <button
+                      type="button"
+                      className="attachment-btn"
+                      title="Attach File"
+                      onClick={() => openFilePicker('image/*,video/*,.pdf,.doc,.docx,.txt,.zip')}
+                      disabled={isUploading}
+                    >
                       <Paperclip size={18} />
                     </button>
                   </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleFilesSelected}
+                  />
 
                   <input
                     type="text"
@@ -515,7 +722,9 @@ export default function MessagesPage() {
                     <Send size={16} />
                   </button>
                 </form>
-                <span className="chat-input-hint">Press Enter to send</span>
+                <span className="chat-input-hint">
+                  {isUploading ? 'Uploading attachment…' : 'Press Enter to send'}
+                </span>
               </div>
             </>
           ) : (

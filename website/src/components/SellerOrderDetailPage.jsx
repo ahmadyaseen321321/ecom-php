@@ -20,7 +20,25 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
 
   if (!order) return null;
 
-  const orderId = order.id || '#ORD-1';
+  // `id` arrives as a number from the API (and may already be formatted by
+  // other callers) — normalise to a '#125' style string so .replace() below
+  // never runs on a number.
+  const rawOrderId = String(order.id ?? order.order_id ?? '');
+  const orderId = rawOrderId ? (rawOrderId.startsWith('#') ? rawOrderId : `#${rawOrderId}`) : '#ORD-1';
+
+  // "2026-10-13 17:22:28" -> "Oct 13, 2026, 5:22 PM"
+  const formatPlacedAt = (value) => {
+    if (!value) return 'Recently placed';
+    const parsed = new Date(String(value).replace(' ', 'T'));
+    if (isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
   const customerName = order.customer || order.customer_name || order.customerName || 'Customer';
   const customerEmail = order.customer_email || (order.user_email) || 'customer@novanest.com';
   const customerPhone = order.customer_phone || '+92 300 1234567';
@@ -70,7 +88,7 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
           <h1 className="order-main-h1">Order {orderId}</h1>
           <span className={`order-status-pill green`}>{order.status || 'Ready to Ship'}</span>
         </div>
-        <p className="order-placed-time">{order.date || order.created_at || 'Recently placed'}</p>
+        <p className="order-placed-time">{formatPlacedAt(order.date || order.created_at)}</p>
       </div>
 
       {/* 4 Summary KPI Bar Cards */}

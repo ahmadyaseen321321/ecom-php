@@ -514,6 +514,22 @@
 .legend-item .dot.dark-green { background: var(--seller-dark-green); }
 .legend-item .dot.grey { background: #e5e7eb; }
 
+/* Placeholder shown by a widget until real data arrives */
+.widget-empty-state {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  text-align: center;
+  padding: 34px 12px;
+}
+
+/* Single row shown when the seller has no orders yet */
+.orders-empty-cell {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 34px 12px;
+}
+
 /* Sales by Age Group Bars */
 .age-group-bars-wrap {
   display: flex;
@@ -697,6 +713,11 @@
   background: #f0fdf4;
   padding: 2px 6px;
   border-radius: 8px;
+}
+
+.available-pill.out-of-stock {
+  color: #dc2626;
+  background: #fef2f2;
 }
 
 .sales-count {

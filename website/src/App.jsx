@@ -1,5 +1,7 @@
 import React from 'react';
 import { CartProvider, useCart } from './context/CartContext';
+import { SocketProvider } from './context/SocketContext';
+import NotificationCenter from './components/NotificationCenter';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import CategoryBubbles from './components/CategoryBubbles';
@@ -50,6 +52,9 @@ function MainLayout() {
 
   return (
     <div className="app-container">
+      {/* Real-Time Floating Notification Toast Banner */}
+      <NotificationCenter />
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="toast-notification animate-fade-in">
@@ -132,7 +137,9 @@ function MainLayout() {
 export default function App() {
   return (
     <CartProvider>
-      <MainLayout />
+      <SocketProvider>
+        <MainLayout />
+      </SocketProvider>
     </CartProvider>
   );
 }

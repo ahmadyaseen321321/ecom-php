@@ -49,7 +49,7 @@ export default function CheckoutPage() {
     return `Rs. ${Number(val || 0).toLocaleString('en-PK')}`;
   };
 
-  const handlePlaceOrder = (e) => {
+  const handlePlaceOrder = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
     if (cart.length === 0) {
@@ -74,8 +74,31 @@ export default function CheckoutPage() {
 
       const fullAddress = `${addressLine1}, ${city} ${zipCode ? '(' + zipCode + ')' : ''} | Phone: ${phone}`;
 
+      // Persist FIRST — the real order id comes back from the API and orders.php
+      // emits order_placed to the seller dashboard with that same id. Emitting a
+      // guessed id beforehand produced phantom orders the dashboard could never
+      // match (and a duplicate notification on top).
+      let savedOrder = null;
+      try {
+        savedOrder = await placeOrderApi({
+          total: totalAmount,
+          address: fullAddress,
+          payment_method: paymentMethod === 'credit' ? 'Credit Card' : 'Cash on Delivery',
+          items: itemsPayload,
+        });
+      } catch (apiErr) {
+        console.log('placeOrderApi response:', apiErr);
+      }
+
+      const realOrderId = savedOrder?.order_id;
+      if (!realOrderId) {
+        // Nothing was saved — keep the cart so the user can simply retry
+        showToast('Could not place your order. Please check your connection and try again.');
+        return;
+      }
+
       const orderInfo = {
-        orderId: `MS-${Math.floor(10000 + Math.random() * 90000)}`,
+        orderId: `#${realOrderId}`,
         total: totalAmount || 0,
         firstItem: cart[0]?.name || 'Items',
         itemCount: (cart || []).reduce((acc, item) => acc + (item.quantity || 1), 0),
@@ -85,18 +108,6 @@ export default function CheckoutPage() {
       // Save order data for Order Success page
       setLastOrderData(orderInfo);
 
-      // Background sync to API (safe fire-and-forget)
-      try {
-        placeOrderApi({
-          total: totalAmount,
-          address: fullAddress,
-          payment_method: paymentMethod === 'credit' ? 'Credit Card' : 'Cash on Delivery',
-          items: itemsPayload,
-        }).catch(() => {});
-      } catch (apiErr) {
-        console.log('Background placeOrderApi error:', apiErr);
-      }
-
       // Clear cart
       setCart([]);
       showToast('🎉 Order placed successfully!');
@@ -105,7 +116,7 @@ export default function CheckoutPage() {
       navigateTo('order-success');
     } catch (err) {
       console.error('Error handling order placement:', err);
-      navigateTo('order-success');
+      showToast('Could not place your order. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

@@ -241,6 +241,20 @@ if ($method === 'GET') {
              }
              $fcm->saveToHistory($db, $customerId, "Order Update", $statusMsg, "order_details");
          }
+         
+         // Real-Time Socket Event Emission
+         try {
+             require_once '../core/socket_helper.php';
+             SocketHelper::emit('order_status_updated', [
+                 'orderId' => $orderId,
+                 'status' => $newStatus,
+                 'customerId' => $customerId,
+                 'sellerId' => $sellerId,
+                 'reason' => $reason
+             ]);
+         } catch (Exception $sockEx) {
+             // Ignore socket server connection error
+         }
 
          echo json_encode(["status" => "success", "message" => "Order updated successfully"]);
     } else {

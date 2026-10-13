@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from '../context/CartContext';
+import { useSocket } from '../context/SocketContext';
 import {
   fetchOrderChatApi,
   sendOrderChatApi,
+  sendOrderChatFilesApi,
+  validateChatFiles,
   getImageUrl
 } from '../services/api';
+import ChatAttachment from './ChatAttachment';
 import {
   X,
   Send,
@@ -43,13 +47,42 @@ export default function SellerOrderChatModal({
   onClose,
   onViewOrderDetails
 }) {
-  const { showToast } = useCart();
+  const { showToast, user } = useCart();
+  const { socket, sendMessage: sendSocketMessage, joinOrder, leaveOrder } = useSocket();
   const [currentOrder, setCurrentOrder] = useState(order);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    // Load from cache instantly — no spinner on return visits
+    try {
+      const numericId = String(order?.id || 'general').replace(/[^0-9]/g, '') || 'general';
+      const key = `chat_cache_${numericId}`;
+      const cached = localStorage.getItem(key);
+      if (cached) return JSON.parse(cached);
+      // Fallback: try old key format in case it was cached before the fix
+      const oldKey = `chat_cache_${order?.id || 'general'}`;
+      const oldCached = localStorage.getItem(oldKey);
+      if (oldCached) {
+        // Migrate to new key
+        localStorage.setItem(key, oldCached);
+        localStorage.removeItem(oldKey);
+        return JSON.parse(oldCached);
+      }
+      return [];
+    } catch { return []; }
+  });
   const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const numericId = String(order?.id || 'general').replace(/[^0-9]/g, '') || 'general';
+      const key = `chat_cache_${numericId}`;
+      // Also check old key format
+      const oldKey = `chat_cache_${order?.id || 'general'}`;
+      return !localStorage.getItem(key) && !localStorage.getItem(oldKey);
+    } catch { return true; }
+  });
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Normalize current order attributes
   const orderId = currentOrder?.id ? (String(currentOrder.id).startsWith('#') ? currentOrder.id : `#ORD-${currentOrder.id}`) : '#ORD-1';
@@ -74,25 +107,28 @@ export default function SellerOrderChatModal({
   const buyerTotalSpent = buyerHistoryOrders.reduce((sum, o) => sum + Number(o.total_amount || o.total || o.price || 0), 0);
   const buyerTotalOrdersCount = Math.max(buyerHistoryOrders.length, 1);
 
-  // Load chat messages whenever current order changes
+  // Cache key per order — use numeric ID only for consistency
+  const cacheKey = `chat_cache_${String(currentOrder?.id || 'general').replace(/[^0-9]/g, '') || 'general'}`;
+
+  // Load chat messages and cache them
   const loadMessages = async (targetOrderId) => {
-    setIsLoading(true);
     try {
       const res = await fetchOrderChatApi(targetOrderId);
       const list = res?.messages || res?.data || (Array.isArray(res) ? res : []);
       if (list.length > 0) {
         setMessages(list);
-      } else {
-        // Fallback initial greeting message if empty
-        setMessages([
-          {
-            id: 'welcome-1',
-            order_id: targetOrderId,
-            sender_type: 'seller',
-            message: `Hello ${customerName}! Thank you for your order (${targetOrderId}). We are processing your items. Feel free to message us if you have questions!`,
-            created_at: new Date().toISOString()
-          }
-        ]);
+        try { localStorage.setItem(cacheKey, JSON.stringify(list)); } catch {}
+      } else if (messages.length === 0) {
+        // Only set welcome message when there are truly no messages and nothing cached
+        const welcome = [{
+          id: 'welcome-1',
+          order_id: targetOrderId,
+          sender_type: 'seller',
+          message: `Hello ${customerName}! Thank you for your order (${targetOrderId}). We are processing your items. Feel free to message us if you have questions!`,
+          created_at: new Date().toISOString()
+        }];
+        setMessages(welcome);
+        try { localStorage.setItem(cacheKey, JSON.stringify(welcome)); } catch {}
       }
     } catch (err) {
       console.error('Failed to load order chat:', err);
@@ -101,11 +137,64 @@ export default function SellerOrderChatModal({
     }
   };
 
+  // Always use the clean numeric ID for socket rooms so seller & customer land in the same room
+  const cleanRoomId = String(currentOrder?.id || '').replace(/[^0-9]/g, '') || String(currentOrder?.id || '');
+
   useEffect(() => {
     if (currentOrder) {
-      loadMessages(orderId);
+      // Immediately show any cached messages for this order — no spinner
+      const numericId = String(currentOrder.id || 'general').replace(/[^0-9]/g, '') || 'general';
+      const key = `chat_cache_${numericId}`;
+      const oldKey = `chat_cache_${currentOrder.id || 'general'}`;
+      try {
+        const cached = localStorage.getItem(key) || localStorage.getItem(oldKey);
+        if (cached) {
+          setMessages(JSON.parse(cached));
+          setIsLoading(false);
+        } else {
+          setMessages([]);
+          setIsLoading(true);
+        }
+      } catch { setIsLoading(true); }
+
+      // Fetch fresh from API in background
+      loadMessages(cleanRoomId);
+      if (joinOrder) joinOrder(cleanRoomId);
     }
-  }, [currentOrder]);
+    return () => {
+      if (leaveOrder && cleanRoomId) leaveOrder(cleanRoomId);
+    };
+  }, [currentOrder, cleanRoomId]);
+
+  // Real-Time Socket Listener for incoming customer messages
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (msg) => {
+      console.log('[SELLER MODAL] received', msg);
+      const msgClean = String(msg.order_id || msg.orderId || '').replace(/[^0-9]/g, '');
+      if (msgClean && cleanRoomId && msgClean !== cleanRoomId) return;
+      const senderType = msg.sender_type || msg.senderType || '';
+      const isOwnEcho = senderType === 'seller' && String(msg.id || '').startsWith('seller_');
+      if (isOwnEcho) return;
+      setMessages(prev => {
+        const id = msg.id || `live_${Date.now()}`;
+        if (prev.some(m => m.id === id)) return prev;
+        const updated = [...prev, {
+          id,
+          order_id: orderId,
+          sender_type: senderType || 'customer',
+          message: msg.message || msg.text || '',
+          attachment_url: msg.attachment_url || msg.attachmentUrl || null,
+          attachment_mime: msg.attachment_mime || null,
+          created_at: msg.created_at || new Date().toISOString(),
+        }];
+        try { localStorage.setItem(cacheKey, JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    };
+    socket.on('receive_message', handler);
+    return () => socket.off('receive_message', handler);
+  }, [socket, cleanRoomId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -115,28 +204,117 @@ export default function SellerOrderChatModal({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSend = async (textToSend = inputText) => {
+  const handleSend = (textToSend = inputText) => {
     const text = String(textToSend || '').trim();
     if (!text) return;
 
     const optimisticMsg = {
-      id: Date.now(),
-      order_id: orderId,
+      id:          `seller_${Date.now()}`,
+      order_id:    orderId,
       sender_type: 'seller',
-      message: text,
-      created_at: new Date().toISOString()
+      message:     text,
+      created_at:  new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, optimisticMsg]);
+    // Instant optimistic add + clear input
+    setMessages((prev) => {
+      const updated = [...prev, optimisticMsg];
+      try { localStorage.setItem(cacheKey, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     setInputText('');
-    setIsSending(true);
 
+    // Emit via Socket.IO — server broadcasts to the order room
+    sendSocketMessage({
+      id:          optimisticMsg.id,
+      orderId: cleanRoomId,
+      message:     text,
+      senderType:  'seller',
+      senderName:  user?.full_name || 'Store Support',
+      recipientId: currentOrder?.user_id || currentOrder?.customer_id,
+    });
+
+    // Persist to DB in background (use display orderId for DB consistency)
+    sendOrderChatApi(orderId, text, 'seller', optimisticMsg.id).catch((err) => {
+      console.warn('[Chat] DB persist failed:', err);
+    });
+  };
+
+  // ─── Attachments (image / video) ─────────────────────────────
+  const openFilePicker = (accept) => {
+    if (!fileInputRef.current) return;
+    fileInputRef.current.setAttribute('accept', accept);
+    fileInputRef.current.value = '';
+    fileInputRef.current.click();
+  };
+
+  const handleFileSelected = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+
+    const sizeProblem = validateChatFiles(files);
+    if (sizeProblem) {
+      showToast(sizeProblem);
+      return;
+    }
+
+    const clientId = `seller_${Date.now()}`;
+    const localPreview = files.map(f => URL.createObjectURL(f)).join(',');
+    const mimeTypes = files.map(f => f.type || '').join(',');
+
+    setMessages(prev => {
+      const updated = [...prev, {
+        id: clientId,
+        order_id: orderId,
+        sender_type: 'seller',
+        message: '',
+        attachment_url: localPreview,
+        attachment_mime: mimeTypes,
+        created_at: new Date().toISOString(),
+      }];
+      try { localStorage.setItem(cacheKey, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    setIsUploading(true);
     try {
-      await sendOrderChatApi(orderId, text, 'seller');
+      const res = await sendOrderChatFilesApi(orderId, '', 'seller', files, clientId);
+      const savedUrl = res?.attachment_url || res?.data?.attachment_url;
+
+      if (!savedUrl) {
+        // Nothing was stored server-side — drop the bubble instead of
+        // broadcasting a blob: URL that only exists in this browser tab
+        setMessages(prev => {
+          const updated = prev.filter(m => m.id !== clientId);
+          try { localStorage.setItem(cacheKey, JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        showToast('Attachment upload failed — please try again');
+        return;
+      }
+
+      setMessages(prev => {
+        const updated = prev.map(m => (
+          m.id === clientId ? { ...m, attachment_url: savedUrl, attachment_mime: null } : m
+        ));
+        try { localStorage.setItem(cacheKey, JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+
+      sendSocketMessage({
+        id: clientId,
+        orderId: cleanRoomId,
+        message: '',
+        senderType: 'seller',
+        senderName: user?.full_name || 'Store Support',
+        recipientId: currentOrder?.user_id || currentOrder?.customer_id,
+        attachmentUrl: savedUrl
+      });
     } catch (err) {
-      showToast('Message sent (offline saved)');
+      console.warn('[Chat] Attachment upload failed:', err);
     } finally {
-      setIsSending(false);
+      setIsUploading(false);
     }
   };
 
@@ -253,12 +431,8 @@ export default function SellerOrderChatModal({
 
                       <div className="msg-bubble-wrapper">
                         <div className={`msg-bubble ${isSeller ? 'seller-bubble' : 'buyer-bubble'}`}>
-                          <p className="msg-text">{msg.message || msg.text}</p>
-                          {msg.attachment_url && (
-                            <div className="msg-attachment-img">
-                              <img src={getImageUrl(msg.attachment_url)} alt="Attachment" />
-                            </div>
-                          )}
+                          {(msg.message || msg.text) ? <p className="msg-text">{msg.message || msg.text}</p> : null}
+                          <ChatAttachment url={msg.attachment_url} mimes={msg.attachment_mime} maxWidth={200} />
                         </div>
                         <div className="msg-time-status">
                           <span className="msg-time">{msgTime}</span>
@@ -301,8 +475,9 @@ export default function SellerOrderChatModal({
                 <button
                   type="button"
                   className="input-tool-btn"
-                  title="Attach Photo"
-                  onClick={() => showToast('Image attachment available')}
+                  title="Attach Photo or Video"
+                  onClick={() => openFilePicker('image/*,video/*')}
+                  disabled={isUploading}
                 >
                   <ImageIcon size={18} />
                 </button>
@@ -310,10 +485,20 @@ export default function SellerOrderChatModal({
                   type="button"
                   className="input-tool-btn"
                   title="Attach File"
-                  onClick={() => showToast('File attachment available')}
+                  onClick={() => openFilePicker('image/*,video/*,.pdf,.doc,.docx,.txt,.zip')}
+                  disabled={isUploading}
                 >
                   <Paperclip size={18} />
                 </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handleFileSelected}
+                />
 
                 <input
                   type="text"

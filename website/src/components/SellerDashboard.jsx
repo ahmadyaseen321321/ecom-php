@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useCart } from '../context/CartContext';
+import { useSocket } from '../context/SocketContext';
 import SellerOrdersPage from './SellerOrdersPage';
 import SellerOrderDetailPage from './SellerOrderDetailPage';
 import SellerReviewsPage from './SellerReviewsPage';
@@ -22,8 +23,11 @@ import {
   getImageUrl,
   fetchConversationsApi,
   fetchOrderChatApi,
-  sendOrderChatApi
+  sendOrderChatApi,
+  sendOrderChatFilesApi,
+  validateChatFiles
 } from '../services/api';
+import ChatAttachment from './ChatAttachment';
 import {
   Loader2,
   TrendingUp,
@@ -72,6 +76,7 @@ import './SellerDashboard.css';
 
 export default function SellerDashboard() {
   const { user, logout, showToast } = useCart();
+  const { socket, isConnected, emitOrderStatusUpdate, sendMessage: sendSocketMessage, joinOrder, leaveOrder } = useSocket();
 
   // Active Tab: 'overview' | 'products' | 'orders' | 'reviews'
   const [activeTab, setActiveTab] = useState('overview');
@@ -125,6 +130,45 @@ export default function SellerDashboard() {
   const [selectedConvId, setSelectedConvId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInputText, setChatInputText] = useState('');
+  const [isUploadingChatFile, setIsUploadingChatFile] = useState(false);
+  const chatFileInputRef = useRef(null);
+
+  // Conversation selection keys look like `user_5`, `email_a@b.com` or `name_john`
+  // — never order numbers. Resolve them to the real order IDs so the socket room
+  // (`order_<id>`) always matches the room the customer joins.
+  const getRoomIds = (selId) => {
+    const ids = new Set();
+    const add = (v) => {
+      if (v === null || v === undefined || v === '') return;
+      if (String(v).toUpperCase() === 'GENERAL') { ids.add('GENERAL'); return; }
+      const n = String(v).replace(/[^0-9]/g, '');
+      if (n) ids.add(n);
+    };
+    const conv = conversations.find(c => String(c.id) === String(selId) || String(c.orderId) === String(selId));
+    if (conv) {
+      add(conv.orderId);
+      (conv.orders || []).forEach(o => add(o.id || o.order_id));
+    } else {
+      add(selId);
+    }
+    return ids;
+  };
+
+  // Join the socket order rooms whenever the selected conversation changes.
+  // Keyed on a stable string of room ids so a conversations reload doesn't
+  // leave/re-join every room (a message sent in that gap would be lost).
+  const activeRoomKey = selectedConvId
+    ? [...getRoomIds(selectedConvId)].sort().join('|')
+    : '';
+
+  useEffect(() => {
+    if (!activeRoomKey || !socket) return;
+    const roomIds = activeRoomKey.split('|').filter(Boolean);
+    roomIds.forEach(id => { if (joinOrder) joinOrder(id); });
+    return () => {
+      roomIds.forEach(id => { if (leaveOrder) leaveOrder(id); });
+    };
+  }, [activeRoomKey, socket]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [chatFilter, setChatFilter] = useState('all');
@@ -134,7 +178,11 @@ export default function SellerDashboard() {
     setIsStatsLoading(true);
     try {
       const res = await fetchSellerStatsApi(days);
-      if (res && (res.status === 'success' || res.data)) {
+      // apiFetch already unwraps { status, data } down to the stats object, so a
+      // truthiness check is all that is needed. The old `status === 'success' ||
+      // res.data` guard never matched the unwrapped object — that is why every
+      // metric card stayed pinned at 0 no matter how many orders arrived.
+      if (res) {
         setStats(res.data || res);
       }
     } catch (err) {
@@ -342,6 +390,24 @@ export default function SellerDashboard() {
       setSelectedConvId(existing.id);
       loadCustomerChatMessages(existing);
     } else {
+      // Create the conversation entry right away so the socket room join,
+      // message filtering and sending all know which order this chat belongs to
+      const rawId = String(ord.id || ord.order_id || '');
+      const newConv = {
+        id: custKey,
+        userId,
+        name: custName,
+        email: custEmail,
+        avatarText: (custName || 'CU').substring(0, 2).toUpperCase(),
+        online: true,
+        orders: [ord],
+        latestOrder: ord,
+        orderId: rawId.startsWith('#') ? rawId : `#ORD-${rawId}`,
+        time: 'Recent',
+        preview: `Order ${rawId.startsWith('#') ? rawId : `#ORD-${rawId}`}`,
+        status: ord.status || 'Recent'
+      };
+      setConversations(prev => [...prev, newConv]);
       setSelectedConvId(custKey);
       loadChatMessages(ord.id || ord.order_id);
     }
@@ -363,18 +429,20 @@ export default function SellerDashboard() {
     }
   };
 
-  // Handle Send Chat Message
-  const handleSendChat = async (e, customText) => {
+  // Handle Send Chat Message - Instantaneous
+  const handleSendChat = (e, customText) => {
     if (e) e.preventDefault();
     const textToSend = (customText || chatInputText || '').trim();
     if (!textToSend || !selectedConvId) return;
     
     const activeConv = conversations.find(c => String(c.id) === String(selectedConvId) || String(c.orderId) === String(selectedConvId));
     const targetOrderId = activeConv?.orderId || (String(selectedConvId).startsWith('#') ? selectedConvId : `#ORD-${selectedConvId}`);
-    
-    // Optimistic local add
+    // Always use clean numeric ID for socket room matching
+    const cleanOrderId = String(targetOrderId).replace(/[^0-9]/g, '') || String(targetOrderId);
+
+    // Instant optimistic local add
     const optimisticMsg = {
-      id: Date.now(),
+      id: `seller_${Date.now()}`,
       order_id: targetOrderId,
       sender_type: 'seller',
       message: textToSend,
@@ -382,21 +450,144 @@ export default function SellerDashboard() {
     };
     setChatMessages(prev => [...prev, optimisticMsg]);
     setChatInputText('');
-    setIsSendingChat(true);
+
+    // 1. Instant Socket.IO emission (0ms latency) — use numeric ID so room matches
+    sendSocketMessage({
+      id: optimisticMsg.id,
+      orderId: cleanOrderId,
+      message: textToSend,
+      senderType: 'seller',
+      senderName: user?.full_name || 'Store Support',
+      recipientId: activeConv?.userId || activeConv?.user_id || activeConv?.customerId
+    });
+
+    // 2. Persist to backend database in background (client id → receivers dedupe)
+    sendOrderChatApi(targetOrderId, textToSend, 'seller', optimisticMsg.id).catch(err => {
+      console.warn('Chat persistence background error:', err);
+    });
+  };
+
+  // ─── Chat attachments (image / video) ─────────────────────────
+  const openChatFilePicker = (accept) => {
+    if (!chatFileInputRef.current) return;
+    chatFileInputRef.current.setAttribute('accept', accept);
+    chatFileInputRef.current.value = '';
+    chatFileInputRef.current.click();
+  };
+
+  const handleChatFileSelected = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length || !selectedConvId) return;
+
+    const sizeProblem = validateChatFiles(files);
+    if (sizeProblem) {
+      showToast(sizeProblem);
+      return;
+    }
+
+    const activeConv = conversations.find(c => String(c.id) === String(selectedConvId) || String(c.orderId) === String(selectedConvId));
+    const targetOrderId = activeConv?.orderId || (String(selectedConvId).startsWith('#') ? selectedConvId : `#ORD-${selectedConvId}`);
+    const cleanOrderId = String(targetOrderId).replace(/[^0-9]/g, '') || String(targetOrderId);
+
+    const clientId = `seller_${Date.now()}`;
+    const localPreview = files.map(f => URL.createObjectURL(f)).join(',');
+    const mimeTypes = files.map(f => f.type || '').join(',');
+
+    setChatMessages(prev => [...prev, {
+      id: clientId,
+      order_id: targetOrderId,
+      sender_type: 'seller',
+      message: '',
+      attachment_url: localPreview,
+      attachment_mime: mimeTypes,
+      created_at: new Date().toISOString()
+    }]);
+    setIsUploadingChatFile(true);
 
     try {
-      await sendOrderChatApi(targetOrderId, textToSend, 'seller');
-      if (activeConv) {
-        loadCustomerChatMessages(activeConv);
-      } else {
-        loadChatMessages(targetOrderId);
+      const res = await sendOrderChatFilesApi(targetOrderId, '', 'seller', files, clientId);
+      const savedUrl = res?.attachment_url || res?.data?.attachment_url;
+
+      if (!savedUrl) {
+        // Nothing was stored server-side — drop the bubble instead of
+        // broadcasting a blob: URL that only exists in this browser tab
+        setChatMessages(prev => prev.filter(m => m.id !== clientId));
+        showToast('Attachment upload failed — please try again');
+        return;
       }
+
+      setChatMessages(prev => prev.map(m => (
+        m.id === clientId ? { ...m, attachment_url: savedUrl, attachment_mime: null } : m
+      )));
+
+      sendSocketMessage({
+        id: clientId,
+        orderId: cleanOrderId,
+        message: '',
+        senderType: 'seller',
+        senderName: user?.full_name || 'Store Support',
+        recipientId: activeConv?.userId || activeConv?.user_id,
+        attachmentUrl: savedUrl
+      });
     } catch (err) {
-      showToast('Failed to send message');
+      console.warn('Attachment upload failed:', err);
     } finally {
-      setIsSendingChat(false);
+      setIsUploadingChatFile(false);
     }
   };
+
+  // Real-Time Socket Listeners for Seller Dashboard
+  useEffect(() => {
+    if (!socket) return;
+
+    // 1. Listen for new orders placed in real time
+    const handleNewOrder = (newOrder) => {
+      console.log('[SellerDashboard] Live new order received:', newOrder);
+      // Stats (revenue/orders/categories/goals), the order list and product
+      // sold-counts all change when an order lands — refresh them together.
+      loadOrders(timeframeDays);
+      loadStats(timeframeDays);
+      loadProducts();
+    };
+
+    // 2. Listen for incoming chat messages in real time
+    const handleIncomingMessage = (msg) => {
+      console.log('[SellerDashboard] received:', msg);
+      const senderType = msg.sender_type || msg.senderType || '';
+      const isOwnEcho = senderType === 'seller' && String(msg.id || '').startsWith('seller_');
+      if (isOwnEcho) return;
+      const msgCleanId = String(msg.order_id || msg.orderId || '').replace(/[^0-9]/g, '');
+      const activeRoomIds = getRoomIds(selectedConvId);
+      // Ignore messages that belong to a different conversation/order
+      if (msgCleanId && activeRoomIds.size && !activeRoomIds.has(msgCleanId)) {
+        loadConversations();
+        return;
+      }
+      setChatMessages(prev => {
+        const id = msg.id || `live_${Date.now()}`;
+        if (prev.some(m => String(m.id) === String(id))) return prev;
+        return [...prev, {
+          id,
+          order_id: msg.order_id || msg.orderId,
+          sender_type: senderType,
+          message: msg.message || msg.text || '',
+          attachment_url: msg.attachment_url || msg.attachmentUrl || null,
+          attachment_mime: msg.attachment_mime || null,
+          created_at: msg.created_at || new Date().toISOString()
+        }];
+      });
+      loadConversations();
+    };
+
+    socket.on('new_order_received', handleNewOrder);
+    socket.on('receive_message', handleIncomingMessage);
+
+    return () => {
+      socket.off('new_order_received', handleNewOrder);
+      socket.off('receive_message', handleIncomingMessage);
+    };
+  }, [socket, timeframeDays, selectedConvId, conversations]);
 
   useEffect(() => {
     loadStats(timeframeDays);
@@ -411,6 +602,10 @@ export default function SellerDashboard() {
     try {
       await updateSellerOrderStatusApi(orderId, newStatus);
       showToast(`Order #${orderId} set to ${newStatus}`);
+
+      // Emit real-time status update over Socket.IO to notify customer
+      emitOrderStatusUpdate(orderId, newStatus);
+
       loadOrders(timeframeDays);
       loadStats(timeframeDays);
     } catch (err) {
@@ -521,11 +716,12 @@ export default function SellerDashboard() {
       showToast('No orders to export');
       return;
     }
-    const headers = ['Order ID', 'Date', 'Customer Name', 'Total (PKR)', 'Status'];
+    const headers = ['Order ID', 'Date', 'Customer Name', 'Products', 'Total (PKR)', 'Status'];
     const rows = sellerOrders.map((o) => [
       o.id || o.order_id,
-      o.created_at || o.date || '',
+      `"${formatOrderDate(o.created_at || o.date).replace(/"/g, '""')}"`,
       `"${o.customer_name || o.full_name || 'Customer'}"`,
+      `"${orderProductSummary(o).replace(/"/g, '""')}"`,
       o.total_amount || o.total || 0,
       o.status
     ]);
@@ -564,17 +760,55 @@ export default function SellerDashboard() {
     }
   };
 
-  // Top Selling Products — real data from API
+  // Top Selling Products — ranked by real units sold (sold_count from the API)
   const topProductsToDisplay = sellerProducts.length > 0
-    ? sellerProducts.slice(0, 3).map((p) => ({
-        id: p.id,
-        name: p.name,
-        sales: `${p.sold_count || 0} Sales`,
-        stock: `${p.stock || 0} Stocks Remaining`,
-        image: getImageUrl(p.main_image),
-        status: parseInt(p.stock) > 0 ? 'Available' : 'Out of Stock'
-      }))
+    ? [...sellerProducts]
+        .sort((a, b) => (Number(b.sold_count) || 0) - (Number(a.sold_count) || 0))
+        .slice(0, 3)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          sales: `${p.sold_count || 0} Sales`,
+          stock: `${p.stock || 0} Stocks Remaining`,
+          image: getImageUrl(p.main_image),
+          status: parseInt(p.stock) > 0 ? 'Available' : 'Out of Stock'
+        }))
     : [];
+
+  // Latest Orders helpers. The product cell used to read a `product_summary`
+  // field the API never sends, so every row showed the same hardcoded product.
+  // Real product names arrive in `items[]`.
+  const orderProductLabel = (ord) => {
+    const items = Array.isArray(ord?.items) ? ord.items : [];
+    if (items.length === 0) return '—';
+    const first = items[0]?.name || 'Product';
+    const qty = Number(items[0]?.quantity) || 1;
+    const extra = items.length - 1;
+    const base = qty > 1 ? `${first} ×${qty}` : first;
+    return extra > 0 ? `${base} +${extra} more` : base;
+  };
+
+  const orderProductSummary = (ord) => {
+    const items = Array.isArray(ord?.items) ? ord.items : [];
+    if (items.length === 0) return '';
+    return items
+      .map((i) => `${i?.name || 'Product'}${Number(i?.quantity) > 1 ? ` x${i.quantity}` : ''}`)
+      .join(', ');
+  };
+
+  // "2026-10-13 17:22:28" -> "Oct 13, 2026, 5:22 PM"
+  const formatOrderDate = (value) => {
+    if (!value) return '—';
+    const parsed = new Date(String(value).replace(' ', 'T'));
+    if (isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
 
   // Daily Sales chart bars (dynamic from API or sensible defaults)
   const dailySalesBars = useMemo(() => {
@@ -601,18 +835,66 @@ export default function SellerDashboard() {
     ];
   }, [stats]);
 
-  // Age group bars data
-  const ageGroupData = [
-    { label: '<19', val: 80, color: '#3B82F6' },
-    { label: '10-19', val: 85, color: '#F59E0B' },
-    { label: '20-29', val: 95, color: '#EF4444' },
-    { label: '30-39', val: 82, color: '#06B6D4' },
-    { label: '40-49', val: 88, color: '#10B981' },
-    { label: '50-59', val: 92, color: '#EC4899' },
-    { label: '60-69', val: 65, color: '#A855F7' },
-    { label: '70-79', val: 40, color: '#60A5FA' },
-    { label: '≥80', val: 25, color: '#9CA3AF' }
-  ];
+  // Orders by status in the selected period. The old card showed fake "age
+  // group" numbers — the users table has no age/DOB, so they could never be real.
+  const statusBarsData = useMemo(() => {
+    const defs = [
+      { key: 'pending_count', label: 'Pending', color: '#F59E0B' },
+      { key: 'confirmed_count', label: 'Confirmed', color: '#3B82F6' },
+      { key: 'shipped_count', label: 'Shipped', color: '#06B6D4' },
+      { key: 'delivered_count', label: 'Delivered', color: '#10B981' },
+      { key: 'cancelled_count', label: 'Cancelled', color: '#EF4444' }
+    ];
+    const counts = defs.map(d => ({ ...d, count: Number(stats?.[d.key]) || 0 }));
+    const total = counts.reduce((s, d) => s + d.count, 0);
+    if (!total) return [];
+    // `val` is the true share shown to the seller; `height` only adds a minimum
+    // so a 0% status still leaves a visible sliver on the track
+    return counts.map(d => {
+      const val = Math.round((d.count / total) * 100);
+      return { ...d, val, height: Math.max(val, 3) };
+    });
+  }, [stats]);
+
+  // Sales by category pie — real revenue share per category for this seller
+  const categoryPie = useMemo(() => {
+    const rows = (stats?.category_sales || []).filter(r => Number(r.revenue) > 0);
+    if (rows.length === 0) return null;
+    const palette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#06b6d4', '#ec4899', '#8b5cf6', '#84cc16'];
+    const total = rows.reduce((s, r) => s + Number(r.revenue || 0), 0);
+    if (total <= 0) return null;
+    let acc = 0;
+    const stops = rows.map((r, i) => {
+      const from = (acc / total) * 360;
+      acc += Number(r.revenue || 0);
+      const to = (acc / total) * 360;
+      return `${palette[i % palette.length]} ${from.toFixed(1)}deg ${to.toFixed(1)}deg`;
+    });
+    return {
+      gradient: `conic-gradient(${stops.join(', ')})`,
+      legend: rows.slice(0, 6).map((r, i) => ({
+        name: r.name,
+        color: palette[i % palette.length],
+        pct: Math.round((Number(r.revenue) / total) * 100)
+      }))
+    };
+  }, [stats]);
+
+  // Monthly goal — real figures: this calendar month measured against the same
+  // numbers last month (previous month = the target, so no invented quotas)
+  const monthlyGoals = useMemo(() => {
+    if (!stats) return null;
+    const pctOf = (cur, prev) => (prev > 0 ? Math.min(100, Math.round((cur / prev) * 100)) : cur > 0 ? 100 : 0);
+    const fmt = n => Math.round(Number(n) || 0).toLocaleString();
+    const curRev = Number(stats.month_revenue) || 0;
+    const prevRev = Number(stats.prev_month_revenue) || 0;
+    const curCust = Number(stats.month_new_customers) || 0;
+    const prevCust = Number(stats.prev_month_new_customers) || 0;
+    return [
+      { label: `Revenue (Rs ${fmt(curRev)} / Rs ${fmt(prevRev)} last month)`, val: pctOf(curRev, prevRev), variant: 'dark-green' },
+      { label: `New Customers (${curCust} / ${prevCust} last month)`, val: pctOf(curCust, prevCust), variant: 'light-green' }
+    ];
+  }, [stats]);
 
   return (
     <div className="seller-dashboard-layout">
@@ -797,69 +1079,81 @@ export default function SellerDashboard() {
                       </div>
                     </div>
 
-                    {/* Customer Demographics Card */}
+                    {/* Sales by Category Card (real revenue share) */}
                     <div className="dashboard-widget-card">
-                      <h3 className="widget-card-title">Customer Demographics</h3>
-                      <div className="pie-chart-wrapper">
-                        <div className="pie-chart-circle"></div>
-                      </div>
-                      <div className="pie-legend-grid">
-                        <div className="legend-item"><span className="dot blue"></span> ≤9</div>
-                        <div className="legend-item"><span className="dot yellow"></span> 10–19</div>
-                        <div className="legend-item"><span className="dot red"></span> 20–29</div>
-                        <div className="legend-item"><span className="dot green"></span> 30–39</div>
-                        <div className="legend-item"><span className="dot teal"></span> 40–49</div>
-                        <div className="legend-item"><span className="dot pink"></span> 50+</div>
-                      </div>
+                      <h3 className="widget-card-title">Sales by Category</h3>
+                      {categoryPie ? (
+                        <>
+                          <div className="pie-chart-wrapper">
+                            <div className="pie-chart-circle" style={{ background: categoryPie.gradient }}></div>
+                          </div>
+                          <div className="pie-legend-grid">
+                            {categoryPie.legend.map((l) => (
+                              <div key={l.name} className="legend-item">
+                                <span className="dot" style={{ background: l.color }}></span> {l.name} {l.pct}%
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="widget-empty-state">
+                          {isStatsLoading ? 'Loading…' : 'No sales in this period yet.'}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Row 2: Sales by Age Group & Monthly Goal */}
                   <div className="charts-row-two mt-20">
-                    {/* Sales by Age Group Card */}
+                    {/* Orders by Status Card (real counts for the period) */}
                     <div className="dashboard-widget-card">
-                      <h3 className="widget-card-title">Sales by Age Group</h3>
-                      <div className="age-group-bars-wrap">
-                        {ageGroupData.map((item, idx) => (
-                          <div key={idx} className="age-bar-col">
-                            <span className="percent-label">{item.val}%</span>
-                            <div className="age-bar-track">
-                              <div
-                                className="age-bar-fill"
-                                style={{ height: `${item.val}%`, backgroundColor: item.color }}
-                              ></div>
+                      <h3 className="widget-card-title">Orders by Status</h3>
+                      {statusBarsData.length > 0 ? (
+                        <div className="age-group-bars-wrap">
+                          {statusBarsData.map((item) => (
+                            <div key={item.key} className="age-bar-col">
+                              <span className="percent-label">{item.val}%</span>
+                              <div className="age-bar-track">
+                                <div
+                                  className="age-bar-fill"
+                                  style={{ height: `${item.height}%`, backgroundColor: item.color }}
+                                ></div>
+                              </div>
+                              <span className="age-x-label">{item.label}</span>
                             </div>
-                            <span className="age-x-label">{item.label}</span>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="widget-empty-state">
+                          {isStatsLoading ? 'Loading…' : 'No orders in this period yet.'}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Monthly Goal Card */}
+                    {/* Monthly Goal Card (this month vs last month) */}
                     <div className="dashboard-widget-card">
                       <h3 className="widget-card-title">Monthly Goal</h3>
                       <div className="monthly-goal-content">
-                        {/* Goal item 1 */}
-                        <div className="goal-row-item">
-                          <div className="goal-text-flex">
-                            <span className="goal-label">Revenue($45k / $60k)</span>
-                            <span className="goal-percent">75%</span>
-                          </div>
-                          <div className="goal-progress-bar">
-                            <div className="progress-fill dark-green" style={{ width: '75%' }}></div>
-                          </div>
-                        </div>
-
-                        {/* Goal item 2 */}
-                        <div className="goal-row-item">
-                          <div className="goal-text-flex">
-                            <span className="goal-label">New Customers (135 / 300)</span>
-                            <span className="goal-percent">45%</span>
-                          </div>
-                          <div className="goal-progress-bar">
-                            <div className="progress-fill light-green" style={{ width: '45%' }}></div>
-                          </div>
-                        </div>
+                        {monthlyGoals ? (
+                          monthlyGoals.map((goal) => (
+                            <div key={goal.label} className="goal-row-item">
+                              <div className="goal-text-flex">
+                                <span className="goal-label">{goal.label}</span>
+                                <span className="goal-percent">{goal.val}%</span>
+                              </div>
+                              <div className="goal-progress-bar">
+                                <div
+                                  className={`progress-fill ${goal.variant}`}
+                                  style={{ width: `${goal.val}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="widget-empty-state">
+                            {isStatsLoading ? 'Loading…' : 'No data for this month yet.'}
+                          </p>
+                        )}
 
                         {/* Legend */}
                         <div className="goal-legend-row">
@@ -890,7 +1184,7 @@ export default function SellerDashboard() {
                           <div className="product-info-column">
                             <div className="title-and-status">
                               <h4 className="top-product-name">{item.name}</h4>
-                              <span className="available-pill">• Available</span>
+                              <span className={`available-pill ${item.status === 'Available' ? '' : 'out-of-stock'}`}>• {item.status}</span>
                             </div>
                             <span className="sales-count">{item.sales}</span>
                             <span className="stocks-count">{item.stock}</span>
@@ -931,12 +1225,12 @@ export default function SellerDashboard() {
                     <tbody>
                       {sellerOrders.length > 0 ? (
                         sellerOrders.slice(0, 5).map((ord) => (
-                          <tr key={ord.id || ord.order_id} onClick={() => { setSelectedSellerOrder({ id: `#ORD-2023-${ord.id || '0892'}`, customer: ord.customer_name || 'Elena Jenkins', total: ord.total_amount || '124.50', status: ord.status || 'Ready to Ship', date: ord.created_at || 'Oct 24, 2023' }); setActiveTab('orders'); }} style={{ cursor: 'pointer' }}>
+                          <tr key={ord.id || ord.order_id} onClick={() => { setSelectedSellerOrder(ord); setActiveTab('orders'); }} style={{ cursor: 'pointer' }}>
                             <td className="bold-id">#{ord.id || ord.order_id}</td>
-                            <td>{ord.product_summary?.split(',')[0] || 'Premium Silk Shirt'}</td>
-                            <td>{ord.created_at || ord.date || 'Oct 24, 2023'}</td>
-                            <td className="bold-price">Rs. {Number(ord.total_amount || ord.total || 142.5).toLocaleString()}</td>
-                            <td>{ord.payment_method || 'Credit Card'}</td>
+                            <td>{orderProductLabel(ord)}</td>
+                            <td>{formatOrderDate(ord.created_at || ord.date)}</td>
+                            <td className="bold-price">Rs. {Number(ord.total_amount || ord.total || 0).toLocaleString()}</td>
+                            <td>{ord.payment_method || '—'}</td>
                             <td>
                               <span className={`order-status-badge ${String(ord.status || 'delivered').toLowerCase()}`}>
                                 {ord.status || 'Delivered'}
@@ -950,29 +1244,11 @@ export default function SellerDashboard() {
                           </tr>
                         ))
                       ) : (
-                        [
-                          { id: '#ORD-2023-0892', customer: 'Elena Jenkins', date: 'Oct 24, 2023', price: '124.50', payment: 'Credit Card', status: 'Ready to Ship' },
-                          { id: '#ORD-2023-0891', customer: 'Marcus Reed', date: 'Oct 24, 2023', price: '89.99', payment: 'Cash on Delivery', status: 'In Progress' },
-                          { id: '#ORD-2023-0885', customer: 'Sarah Williams', date: 'Oct 22, 2023', price: '342.00', payment: 'Credit Card', status: 'Shipped' }
-                        ].map((ord) => (
-                          <tr key={ord.id} onClick={() => { setSelectedSellerOrder({ id: ord.id, customer: ord.customer, total: ord.price, status: ord.status, date: ord.date }); setActiveTab('orders'); }} style={{ cursor: 'pointer' }}>
-                            <td className="bold-id">{ord.id}</td>
-                            <td>{ord.customer}</td>
-                            <td>{ord.date}</td>
-                            <td className="bold-price">${ord.price}</td>
-                            <td>{ord.payment}</td>
-                            <td>
-                              <span className={`order-status-badge ${ord.status.toLowerCase()}`}>
-                                {ord.status}
-                              </span>
-                            </td>
-                            <td>
-                              <button className="table-action-dots">
-                                <MoreHorizontal size={18} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        <tr>
+                          <td colSpan={7} className="orders-empty-cell">
+                            {isOrdersLoading ? 'Loading orders…' : 'No orders yet — new orders will appear here in real time.'}
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
@@ -1311,12 +1587,8 @@ export default function SellerDashboard() {
                                   <div className="seller-avatar">{(currentName || 'CU').substring(0, 2).toUpperCase()}</div>
                                 )}
                                 <div className={`bubble-box ${isSeller ? 'green-bubble' : 'grey-bubble'}`}>
-                                  {msg.message || msg.text}
-                                  {msg.attachment_url && (
-                                    <div style={{ marginTop: 8 }}>
-                                      <img src={getImageUrl(msg.attachment_url)} alt="attachment" style={{ maxWidth: 200, borderRadius: 8 }} />
-                                    </div>
-                                  )}
+                                  {(msg.message || msg.text) ? <span>{msg.message || msg.text}</span> : null}
+                                  <ChatAttachment url={msg.attachment_url} mimes={msg.attachment_mime} />
                                 </div>
                                 <span className={isSeller ? 'chat-time-stamp' : 'seller-time-stamp'}>{msgTime}</span>
                               </div>
@@ -1347,12 +1619,33 @@ export default function SellerDashboard() {
                       {/* Chat Input Bar */}
                       <form className="chat-input-footer" onSubmit={handleSendChat}>
                         <div className="input-card-box">
-                          <button type="button" className="attach-icon-btn" title="Add Image" onClick={() => showToast('Image upload available')}>
+                          <button
+                            type="button"
+                            className="attach-icon-btn"
+                            title="Add Image or Video"
+                            onClick={() => openChatFilePicker('image/*,video/*')}
+                            disabled={isUploadingChatFile}
+                          >
                             <Image size={18} />
                           </button>
-                          <button type="button" className="attach-icon-btn" title="Attach File" onClick={() => showToast('File attachment available')}>
+                          <button
+                            type="button"
+                            className="attach-icon-btn"
+                            title="Attach File"
+                            onClick={() => openChatFilePicker('image/*,video/*,.pdf,.doc,.docx,.txt,.zip')}
+                            disabled={isUploadingChatFile}
+                          >
                             <Paperclip size={18} />
                           </button>
+
+                          <input
+                            ref={chatFileInputRef}
+                            type="file"
+                            accept="image/*,video/*"
+                            multiple
+                            style={{ display: 'none' }}
+                            onChange={handleChatFileSelected}
+                          />
 
                           <input
                             type="text"
@@ -1366,7 +1659,9 @@ export default function SellerDashboard() {
                             {isSendingChat ? <Loader2 size={16} className="admin-spin" /> : <Send size={16} />}
                           </button>
                         </div>
-                        <span className="input-help-subtext">Press Enter to send, Shift+Enter for new line</span>
+                        <span className="input-help-subtext">
+                          {isUploadingChatFile ? 'Uploading attachment…' : 'Press Enter to send, Shift+Enter for new line'}
+                        </span>
                       </form>
                     </>
                   );

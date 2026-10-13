@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
+import { useSocket } from '../context/SocketContext';
 import { fetchOrdersApi, cancelOrderApi, addReviewApi, getImageUrl } from '../services/api';
 import {
   Search,
@@ -35,8 +36,18 @@ const STATUS_FILTERS = [
 
 export default function OrdersPage() {
   const { user, openLoginModal, openSignupModal, setIsAuthModalOpen, navigateTo, showToast, addToCart } = useCart();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { socket } = useSocket();
+  const [orders, setOrders] = useState(() => {
+    // Show cached orders immediately so page feels instant
+    try {
+      const cached = localStorage.getItem('orders_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    try { return !localStorage.getItem('orders_cache'); }
+    catch { return true; }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [timeFilter, setTimeFilter] = useState('All Orders');
@@ -55,23 +66,61 @@ export default function OrdersPage() {
       loadOrders();
     } else {
       setOrders([]);
+      setLoading(false);
+      try { localStorage.removeItem('orders_cache'); } catch {}
     }
   }, [user]);
 
+  // Real-Time Socket Listener for Live Order Status Updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatusUpdate = (update) => {
+      console.log('[OrdersPage] Real-time order status update received:', update);
+      const updateOrderId = String(update.orderId || update.rawOrderId || '').replace(/[^0-9]/g, '');
+
+      setOrders((prevOrders) =>
+        prevOrders.map((ord) => {
+          const currentId = String(ord.id || '').replace(/[^0-9]/g, '');
+          if (currentId === updateOrderId) {
+            return {
+              ...ord,
+              status: update.status,
+              order_status: update.status,
+              cancellation_reason: update.reason || ord.cancellation_reason
+            };
+          }
+          return ord;
+        })
+      );
+    };
+
+    const handleOrderPlaced = () => {
+      loadOrders();
+    };
+
+    socket.on('order_status_updated', handleStatusUpdate);
+    socket.on('order_placed_success', handleOrderPlaced);
+
+    return () => {
+      socket.off('order_status_updated', handleStatusUpdate);
+      socket.off('order_placed_success', handleOrderPlaced);
+    };
+  }, [socket]);
+
   const loadOrders = async () => {
-    setLoading(true);
+    // Only show spinner on first load (no cache), background-refresh otherwise
+    const hasCached = orders.length > 0;
+    if (!hasCached) setLoading(true);
     try {
       const data = await fetchOrdersApi();
-      if (Array.isArray(data)) {
-        setOrders(data);
-      } else if (data && Array.isArray(data.data)) {
-        setOrders(data.data);
-      } else {
-        setOrders([]);
-      }
+      const list = Array.isArray(data) ? data : (data?.data || []);
+      setOrders(list);
+      // Cache for instant display next visit
+      try { localStorage.setItem('orders_cache', JSON.stringify(list)); } catch {}
     } catch (err) {
       console.warn('Error loading orders:', err);
-      setOrders([]);
+      if (!hasCached) setOrders([]);
     } finally {
       setLoading(false);
     }

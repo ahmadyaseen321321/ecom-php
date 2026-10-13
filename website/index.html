@@ -14,5 +14,22 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Google Identity Services (GIS) SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- Facebook SDK -->
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId      : window.__FB_APP_ID || 'YOUR_FACEBOOK_APP_ID',
+          cookie     : true,
+          xfbml      : false,
+          version    : 'v19.0'
+        });
+        FB.AppEvents.logPageView();
+      };
+    </script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
   </body>
 </html>

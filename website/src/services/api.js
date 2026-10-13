@@ -100,7 +100,7 @@ async function apiFetch(endpoint, options = {}) {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     };
-    if (options.body && !headers['Content-Type']) {
+    if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
       headers['Content-Type'] = 'application/json';
     }
 
@@ -196,8 +196,9 @@ export async function removeFromWishlistApi(productId) {
 }
 
 // GET /api/orders.php
-export async function fetchOrdersApi() {
-  return apiFetch('/api/orders.php');
+export async function fetchOrdersApi(limit = null) {
+  const params = limit ? `?limit=${limit}` : '';
+  return apiFetch(`/api/orders.php${params}`);
 }
 
 // POST /api/orders.php
@@ -276,6 +277,31 @@ export async function registerUser(userData) {
   } catch (error) {
     console.error('[REGISTER] Network Error:', error);
     return null;
+  }
+}
+
+// POST /auth/social_login.php
+export async function socialLoginApi(socialData) {
+  const url = `${API_BASE_URL}/auth/social_login.php`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(socialData),
+    });
+    const data = await response.json();
+    console.log('[SOCIAL_LOGIN] Status:', response.status, 'Response:', data);
+
+    if (response.ok && (data.status === 'success' || data.token || data.user)) {
+      return data;
+    }
+    return { _failed: true, message: data.message || 'Social login failed' };
+  } catch (error) {
+    console.error('[SOCIAL_LOGIN] Network Error:', error);
+    return { _networkError: true, message: error.message };
   }
 }
 
@@ -478,10 +504,48 @@ export async function fetchOrderChatApi(orderId) {
 }
 
 // POST /api/chat.php — Send message
-export async function sendOrderChatApi(orderId, message, senderType = 'seller') {
+export async function sendOrderChatApi(orderId, message, senderType = 'seller', clientId = null) {
   return apiFetch('/api/chat.php', {
     method: 'POST',
-    body: JSON.stringify({ order_id: orderId, message, sender_type: senderType }),
+    body: JSON.stringify({ order_id: orderId, message, sender_type: senderType, client_id: clientId }),
+  });
+}
+
+// POST /api/chat.php (multipart) — Send a message with image/video attachments
+export const MAX_CHAT_FILE_BYTES = 50 * 1024 * 1024;   // matches PHP per-file cap
+export const MAX_CHAT_UPLOAD_BYTES = 90 * 1024 * 1024;  // must stay under post_max_size
+
+// Returns an error message for the first problem found, or null when the
+// selection is uploadable — saves a doomed round-trip to PHP.
+export function validateChatFiles(files) {
+  const list = Array.from(files || []);
+  if (list.length === 0) return 'No file selected';
+
+  for (const file of list) {
+    if (file.size > MAX_CHAT_FILE_BYTES) {
+      return `"${file.name}" is ${(file.size / 1048576).toFixed(1)} MB — max is 50 MB per file`;
+    }
+  }
+
+  const total = list.reduce((sum, file) => sum + file.size, 0);
+  if (total > MAX_CHAT_UPLOAD_BYTES) {
+    return `Attachments total ${(total / 1048576).toFixed(0)} MB — max is 90 MB per message`;
+  }
+
+  return null;
+}
+
+export async function sendOrderChatFilesApi(orderId, message, senderType = 'seller', files = [], clientId = null) {
+  const formData = new FormData();
+  formData.append('order_id', orderId);
+  formData.append('message', message || '');
+  formData.append('sender_type', senderType);
+  if (clientId) formData.append('client_id', clientId);
+  Array.from(files).forEach((file) => formData.append('files', file));
+
+  return apiFetch('/api/chat.php', {
+    method: 'POST',
+    body: formData,
   });
 }
 

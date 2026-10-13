@@ -43,7 +43,8 @@ if (!empty($data->email) && !empty($data->password)) {
                 "full_name" => $user['full_name'],
                 "email" => $user['email'],
                 "role" => $user['role'],
-                "seller_id" => $user['seller_id']
+                "seller_id" => $user['seller_id'],
+                "is_seller" => $user['role'] === 'seller' ? 1 : 0
             ]
         ]);
     } else {

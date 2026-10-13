@@ -67,7 +67,10 @@ if ($method === 'GET') {
         if ($role === 'admin') {
             $query = "SELECT p.*, c.name as category_name, 
                       (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_main DESC, id ASC LIMIT 1) as main_image,
-                      (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images
+                      (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images,
+                      (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi 
+                       JOIN orders o ON o.id = oi.order_id 
+                       WHERE oi.product_id = p.id AND o.order_status NOT IN ('cancelled', 'returned')) as sold_count
                       FROM products p 
                       LEFT JOIN categories c ON p.category_id = c.id
                       ORDER BY p.created_at DESC";
@@ -80,7 +83,10 @@ if ($method === 'GET') {
 
         $query = "SELECT p.*, c.name as category_name, 
                   (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_main DESC, id ASC LIMIT 1) as main_image,
-                  (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images
+                  (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images,
+                  (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi 
+                   JOIN orders o ON o.id = oi.order_id 
+                   WHERE oi.product_id = p.id AND o.order_status NOT IN ('cancelled', 'returned')) as sold_count
                   FROM products p 
                   LEFT JOIN categories c ON p.category_id = c.id 
                   JOIN sellers s ON p.seller_id = s.id 
@@ -97,7 +103,10 @@ if ($method === 'GET') {
 
     $query = "SELECT p.*, c.name as category_name, 
               (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_main DESC, id ASC LIMIT 1) as main_image,
-              (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images
+              (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images,
+              (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi 
+               JOIN orders o ON o.id = oi.order_id 
+               WHERE oi.product_id = p.id AND o.order_status NOT IN ('cancelled', 'returned')) as sold_count
               FROM products p 
               LEFT JOIN categories c ON p.category_id = c.id";
     $params = [];

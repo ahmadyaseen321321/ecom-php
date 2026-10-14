@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { useSocket } from '../context/SocketContext';
-import { fetchOrdersApi, cancelOrderApi, addReviewApi, getImageUrl } from '../services/api';
+import {
+  fetchOrdersApi,
+  cancelOrderApi,
+  addReviewApi,
+  getImageUrl,
+  tcsTrackingApi,
+  downloadInvoiceApi,
+} from '../services/api';
+import { STAGES, currentStage } from './TrackingTimeline';
 import {
   Search,
   ArrowLeft,
@@ -19,7 +27,8 @@ import {
   Check,
   CircleDot,
   Home,
-  Package
+  Package,
+  Clock
 } from 'lucide-react';
 import './OrdersPage.css';
 
@@ -61,6 +70,35 @@ export default function OrdersPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // TCS live tracking for the open order-detail panel
+  const [orderTracking, setOrderTracking] = useState(null);
+  const [trackRefreshing, setTrackRefreshing] = useState(false);
+
+  const refreshTracking = async () => {
+    const id = selectedOrderDetails?.id;
+    if (!id) return null;
+    setTrackRefreshing(true);
+    const res = await tcsTrackingApi(id);
+    if (res) setOrderTracking(res);
+    setTrackRefreshing(false);
+    return res;
+  };
+
+  // Fetch real TCS checkpoints whenever the detail panel opens
+  useEffect(() => {
+    let alive = true;
+    setOrderTracking(null);
+    if (selectedOrderDetails?.id) {
+      tcsTrackingApi(selectedOrderDetails.id).then((res) => {
+        if (alive && res) setOrderTracking(res);
+      });
+    }
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOrderDetails?.id]);
+
   useEffect(() => {
     if (user) {
       loadOrders();
@@ -77,7 +115,7 @@ export default function OrdersPage() {
 
     const handleStatusUpdate = (update) => {
       console.log('[OrdersPage] Real-time order status update received:', update);
-      const updateOrderId = String(update.orderId || update.rawOrderId || '').replace(/[^0-9]/g, '');
+      const updateOrderId = String(update.orderId || update.order_id || update.rawOrderId || '').replace(/[^0-9]/g, '');
 
       setOrders((prevOrders) =>
         prevOrders.map((ord) => {
@@ -87,6 +125,8 @@ export default function OrdersPage() {
               ...ord,
               status: update.status,
               order_status: update.status,
+              tcs_cn: update.tcs_cn || ord.tcs_cn,
+              tcs_status: update.tcs_status || ord.tcs_status,
               cancellation_reason: update.reason || ord.cancellation_reason
             };
           }
@@ -125,6 +165,64 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
+
+  // Filtered orders by search, status filter & time filter.
+  // (Declared before the !user early return so hooks always run in the same order.)
+  const filteredOrders = useMemo(() => {
+    let result = orders;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (o) =>
+          String(o.id).toLowerCase().includes(q) ||
+          (o.items && o.items.some((it) => (it.name || it.product_name || '').toLowerCase().includes(q))) ||
+          (o.shipping_address && String(o.shipping_address).toLowerCase().includes(q))
+      );
+    }
+
+    if (statusFilter && statusFilter !== 'All') {
+      const target = statusFilter.toLowerCase().replace(/\s+/g, '');
+      result = result.filter((o) => {
+        const s = (o.status || o.order_status || 'processing').toLowerCase().replace(/\s+/g, '');
+        if (target === 'completed') {
+          return s === 'completed' || s === 'delivered';
+        }
+        if (target === 'pendingpayment') {
+          return s === 'pendingpayment' || s === 'pending';
+        }
+        if (target === 'processing') {
+          return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped';
+        }
+        if (target === 'onhold') {
+          return s === 'onhold' || s === 'hold';
+        }
+        if (target === 'cancelled') {
+          return s === 'cancelled' || s === 'canceled';
+        }
+        if (target === 'refunded') {
+          return s === 'refunded' || s === 'refund';
+        }
+        if (target === 'failed') {
+          return s === 'failed';
+        }
+        return s === target || s.includes(target);
+      });
+    }
+
+    if (timeFilter && timeFilter !== 'All Orders') {
+      const now = Date.now();
+      if (timeFilter === 'Last 30 Days') {
+        result = result.filter(o => (now - new Date(o.created_at || o.date || now).getTime()) <= 30 * 24 * 3600 * 1000);
+      } else if (timeFilter === 'Last 3 Months') {
+        result = result.filter(o => (now - new Date(o.created_at || o.date || now).getTime()) <= 90 * 24 * 3600 * 1000);
+      } else if (timeFilter === '2024') {
+        result = result.filter(o => new Date(o.created_at || o.date || now).getFullYear() === 2024);
+      }
+    }
+
+    return result;
+  }, [orders, searchQuery, statusFilter, timeFilter]);
 
   if (!user) {
     return (
@@ -290,63 +388,6 @@ export default function OrdersPage() {
     }
   };
 
-  // Filtered orders by search, status filter & time filter
-  const filteredOrders = useMemo(() => {
-    let result = orders;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (o) =>
-          String(o.id).toLowerCase().includes(q) ||
-          (o.items && o.items.some((it) => (it.name || it.product_name || '').toLowerCase().includes(q))) ||
-          (o.shipping_address && String(o.shipping_address).toLowerCase().includes(q))
-      );
-    }
-
-    if (statusFilter && statusFilter !== 'All') {
-      const target = statusFilter.toLowerCase().replace(/\s+/g, '');
-      result = result.filter((o) => {
-        const s = (o.status || o.order_status || 'processing').toLowerCase().replace(/\s+/g, '');
-        if (target === 'completed') {
-          return s === 'completed' || s === 'delivered';
-        }
-        if (target === 'pendingpayment') {
-          return s === 'pendingpayment' || s === 'pending';
-        }
-        if (target === 'processing') {
-          return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped';
-        }
-        if (target === 'onhold') {
-          return s === 'onhold' || s === 'hold';
-        }
-        if (target === 'cancelled') {
-          return s === 'cancelled' || s === 'canceled';
-        }
-        if (target === 'refunded') {
-          return s === 'refunded' || s === 'refund';
-        }
-        if (target === 'failed') {
-          return s === 'failed';
-        }
-        return s === target || s.includes(target);
-      });
-    }
-
-    if (timeFilter && timeFilter !== 'All Orders') {
-      const now = Date.now();
-      if (timeFilter === 'Last 30 Days') {
-        result = result.filter(o => (now - new Date(o.created_at || o.date || now).getTime()) <= 30 * 24 * 3600 * 1000);
-      } else if (timeFilter === 'Last 3 Months') {
-        result = result.filter(o => (now - new Date(o.created_at || o.date || now).getTime()) <= 90 * 24 * 3600 * 1000);
-      } else if (timeFilter === '2024') {
-        result = result.filter(o => new Date(o.created_at || o.date || now).getFullYear() === 2024);
-      }
-    }
-
-    return result;
-  }, [orders, searchQuery, statusFilter, timeFilter]);
-
   const renderStatusPill = (status) => {
     const raw = (status || 'Processing').trim();
     const st = raw.toLowerCase().replace(/\s+/g, '');
@@ -386,7 +427,56 @@ export default function OrdersPage() {
     const statusLower = (o.status || '').toLowerCase();
     const isCancelled = statusLower.includes('cancel');
     const isDelivered = statusLower.includes('delivered');
-    const isInTransit = statusLower.includes('transit');
+    const isInTransit = statusLower.includes('transit') || statusLower.includes('shipped');
+
+    // ── Real TCS tracking data (loaded when the panel opened) ─────────
+    const tcsCn = orderTracking?.tcs_cn || o.tcs_cn || '';
+    const hasCn = !!tcsCn;
+    const tcsEvents = orderTracking?.events || [];
+    const stage = tcsEvents.length ? currentStage(tcsEvents) : null;
+
+    const shortDate = (value) => {
+      if (!value) return null;
+      const d = new Date(String(value).replace(' ', 'T'));
+      return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+    // Date of the newest checkpoint matching each stage (Ordered uses order date)
+    const stepDate = (stageIdx) => {
+      const s = STAGES[stageIdx];
+      if (!s || !s.match) return shortDate(o.created_at);
+      const ev = tcsEvents.find((e) => s.match.test(`${e.status_text || ''} ${e.status_code || ''}`));
+      return ev ? shortDate(ev.checkpoint_at) : null;
+    };
+    const stepDone = (stageIdx) => {
+      if (isCancelled) return stageIdx === 0;
+      if (stage !== null) return stage >= stageIdx;
+      if (isDelivered) return true;
+      return stageIdx === 0; // honest fallback until checkpoints load
+    };
+    const fillWidth = isCancelled
+      ? '0%'
+      : isDelivered
+      ? '100%'
+      : stage !== null
+      ? ['15%', '40%', '65%', '85%', '100%'][Math.min(stage, 4)]
+      : isInTransit
+      ? '75%'
+      : '40%';
+    const renderStep = (stageIdx, label, PendingIcon) => {
+      const done = stepDone(stageIdx);
+      const active = !done && stageIdx > 0 && stepDone(stageIdx - 1);
+      return (
+        <div className={`tracker-step ${done ? 'completed' : active ? 'active' : 'pending'}`}>
+          <div className={`step-node ${done ? 'circle-check' : active ? 'circle-active' : 'circle-home'}`}>
+            {done ? <Check size={14} /> : active ? <CircleDot size={14} /> : <PendingIcon size={14} />}
+          </div>
+          <span className="step-label font-bold">{label}</span>
+          <span className="step-date">
+            {done ? stepDate(stageIdx) || (stageIdx === 0 ? '—' : 'Done') : 'Pending'}
+          </span>
+        </div>
+      );
+    };
 
     return (
       <div className="order-detail-page-container">
@@ -426,65 +516,15 @@ export default function OrdersPage() {
                 {/* Progress Bar Timeline */}
                 <div className="timeline-tracker">
                   <div className="tracker-line">
-                    <div
-                      className="tracker-progress-fill"
-                      style={{
-                        width: isCancelled
-                          ? '0%'
-                          : isDelivered
-                          ? '100%'
-                          : isInTransit
-                          ? '75%'
-                          : '40%'
-                      }}
-                    ></div>
+                    <div className="tracker-progress-fill" style={{ width: fillWidth }}></div>
                   </div>
 
                   <div className="tracker-steps">
-                    {/* Step 1: Ordered */}
-                    <div className="tracker-step completed">
-                      <div className="step-node circle-check">
-                        <Check size={14} />
-                      </div>
-                      <span className="step-label font-bold">Ordered</span>
-                      <span className="step-date">Oct 24</span>
-                    </div>
-
-                    {/* Step 2: Processing */}
-                    <div className="tracker-step completed">
-                      <div className="step-node circle-check">
-                        <Check size={14} />
-                      </div>
-                      <span className="step-label font-bold">Processing</span>
-                      <span className="step-date">Oct 25</span>
-                    </div>
-
-                    {/* Step 3: Shipped */}
-                    <div className="tracker-step completed">
-                      <div className="step-node circle-check">
-                        <Check size={14} />
-                      </div>
-                      <span className="step-label font-bold">Shipped</span>
-                      <span className="step-date">Oct 26</span>
-                    </div>
-
-                    {/* Step 4: Out for Delivery */}
-                    <div className={`tracker-step ${isInTransit || !isDelivered ? 'active' : 'completed'}`}>
-                      <div className="step-node circle-active">
-                        <CircleDot size={14} />
-                      </div>
-                      <span className="step-label font-bold">Out for Delivery</span>
-                      <span className="step-date">Today, by 8pm</span>
-                    </div>
-
-                    {/* Step 5: Delivered */}
-                    <div className={`tracker-step ${isDelivered ? 'completed' : 'pending'}`}>
-                      <div className="step-node circle-home">
-                        <Home size={14} />
-                      </div>
-                      <span className="step-label">Delivered</span>
-                      <span className="step-date">{isDelivered ? 'Oct 28' : 'Pending'}</span>
-                    </div>
+                    {renderStep(0, 'Ordered', Home)}
+                    {renderStep(1, 'Processing', Truck)}
+                    {renderStep(2, 'Shipped', Package)}
+                    {renderStep(3, 'Out for Delivery', Clock)}
+                    {renderStep(4, 'Delivered', Home)}
                   </div>
                 </div>
 
@@ -495,12 +535,26 @@ export default function OrdersPage() {
                       <Truck size={20} />
                     </div>
                     <div>
-                      <span className="track-label">Tracking Number</span>
-                      <span className="track-code">{o.tracking_number || '1Z9999999999999999'}</span>
+                      <span className="track-label">
+                        {hasCn ? `TCS — ${orderTracking?.tcs_status || o.tcs_status || 'Tracking'}` : 'Tracking Number'}
+                      </span>
+                      <span className="track-code">{hasCn ? tcsCn : 'Not shipped yet'}</span>
                     </div>
                   </div>
-                  <button className="track-package-btn" onClick={() => showToast('Package tracking is live!')}>
-                    Track Package
+                  <button
+                    className="track-package-btn"
+                    onClick={() => {
+                      if (!hasCn) {
+                        showToast('This order has not been dispatched yet.');
+                        return;
+                      }
+                      refreshTracking().then((res) => {
+                        if (res) showToast('Tracking updated — ' + (res.tcs_status || 'latest checkpoints'));
+                      });
+                    }}
+                    disabled={trackRefreshing}
+                  >
+                    {trackRefreshing ? 'Refreshing…' : 'Track Package'}
                   </button>
                 </div>
               </div>
@@ -595,7 +649,14 @@ export default function OrdersPage() {
 
                 <button
                   className="download-invoice-btn"
-                  onClick={() => alert(`Invoice for Order #${o.id} downloaded.`)}
+                  onClick={async () => {
+                    try {
+                      await downloadInvoiceApi(o.id);
+                      showToast('Invoice PDF downloaded.');
+                    } catch (e) {
+                      showToast(e.message || 'Invoice download failed.', 'error');
+                    }
+                  }}
                 >
                   <FileText size={16} />
                   <span>Download Invoice</span>
@@ -732,7 +793,7 @@ export default function OrdersPage() {
               const orderTotal = Number(order.total ?? order.total_amount ?? order.total_price ?? 0);
               const statusLower = (order.status || '').toLowerCase();
               const isDelivered = statusLower.includes('delivered');
-              const isInTransit = statusLower.includes('transit');
+              const isInTransit = statusLower.includes('transit') || statusLower.includes('shipped');
               const isProcessing = statusLower.includes('processing') || statusLower.includes('pending');
               const isCancelled = statusLower.includes('cancel');
 

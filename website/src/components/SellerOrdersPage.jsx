@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { fetchSellerOrdersApi, getImageUrl } from '../services/api';
 import {
@@ -11,7 +11,10 @@ import {
   ChevronRight,
   Loader2,
   Package,
-  MessageSquare
+  MessageSquare,
+  ShoppingBag,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import './SellerOrdersPage.css';
 
@@ -75,6 +78,27 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
     return matchesSearch && matchesStatus;
   });
 
+  // Live counts per status group — drive the summary cards above the table
+  const statusCounts = useMemo(() => {
+    const counts = { ALL: 0, 'Ready to Ship': 0, 'In Progress': 0, Shipped: 0, Delivered: 0 };
+    orders.forEach((ord) => {
+      counts.ALL += 1;
+      const norm = getNormalizedStatus(ord.status || ord.order_status);
+      if (counts[norm.label] !== undefined) {
+        counts[norm.label] += 1;
+      }
+    });
+    return counts;
+  }, [orders]);
+
+  const summaryCards = [
+    { key: 'ALL', label: 'All Orders', icon: ShoppingBag, accent: 'all' },
+    { key: 'Ready to Ship', label: 'Pending Orders', icon: Clock, accent: 'pending' },
+    { key: 'In Progress', label: 'In Progress', icon: Loader2, accent: 'progress' },
+    { key: 'Shipped', label: 'Shipped', icon: Truck, accent: 'shipped' },
+    { key: 'Delivered', label: 'Delivered', icon: CheckCircle2, accent: 'delivered' }
+  ];
+
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
   const paginatedOrders = filteredOrders.slice((currentPage - 1) * ORDERS_PER_PAGE, currentPage * ORDERS_PER_PAGE);
 
@@ -98,6 +122,26 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
         </div>
       </div>
 
+      {/* Status Summary Cards — click one to filter the table below */}
+      <div className="order-status-cards-row">
+        {summaryCards.map((card) => (
+          <button
+            key={card.key}
+            className={`order-status-summary-card ${card.accent} ${statusFilter === card.key ? 'active' : ''}`}
+            onClick={() => { setStatusFilter(card.key); setCurrentPage(1); }}
+          >
+            <div className="oss-card-top">
+              <span className="oss-card-label">{card.label}</span>
+              <span className="oss-card-icon"><card.icon size={16} /></span>
+            </div>
+            <span className="oss-card-count">{statusCounts[card.key] ?? 0}</span>
+            <span className="oss-card-hint">
+              {card.key === 'ALL' ? 'Every order in your store' : `Showing ${statusCounts[card.key] ?? 0} order${(statusCounts[card.key] ?? 0) === 1 ? '' : 's'}`}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Main Card Wrapper */}
       <div className="dashboard-widget-card orders-table-card">
         {/* Search & Status Filter Bar */}
@@ -112,17 +156,9 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
             />
           </div>
 
-          <div className="status-filter-pills-row">
-            {['All Orders', 'Ready to Ship', 'In Progress', 'Shipped', 'Delivered'].map((pill, idx) => (
-              <button
-                key={idx}
-                className={`status-tab-pill ${statusFilter === pill || (idx === 0 && statusFilter === 'ALL') ? 'active' : ''}`}
-                onClick={() => { setStatusFilter(idx === 0 ? 'ALL' : pill); setCurrentPage(1); }}
-              >
-                {pill}
-              </button>
-            ))}
-          </div>
+          <span className="orders-active-filter-text">
+            {statusFilter === 'ALL' ? 'Showing all orders' : `Filtered: ${statusFilter}`}
+          </span>
         </div>
 
         {/* Table */}

@@ -355,3 +355,250 @@
     min-width: 140px;
   }
 }
+
+/* ═══ TCS integration styles ═══════════════════════════════════════ */
+
+.shipment-loading-state,
+.shipment-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: #6b7280;
+  background: #ffffff;
+  border: 1px solid #edf2ee;
+  border-radius: 16px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.shipment-empty-state p {
+  margin: 0;
+  max-width: 420px;
+}
+
+/* Mode badge in the page subtitle */
+.shipment-header .page-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tcs-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.tcs-mode-badge.demo {
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+}
+
+.tcs-mode-badge.live {
+  color: #065f46;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+}
+
+/* Search box */
+.shipment-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #9ca3af;
+  min-width: 230px;
+}
+
+.shipment-search-box input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: #111827;
+  width: 100%;
+}
+
+/* Count chips */
+.shipment-stat-chips {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shipment-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 16px;
+  color: #283a2e;
+}
+
+.shipment-chip .chip-num {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.shipment-chip .chip-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* Section titles */
+.shipment-section-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 14px 0 4px;
+}
+
+/* CN + COD chips inside cards */
+.cn-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.cn-chip {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #283a2e;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 3px 10px;
+  border-radius: 7px;
+}
+
+.cod-chip {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.cod-chip.unpaid {
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+}
+
+.cod-chip.paid {
+  color: #065f46;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+}
+
+/* Ship button */
+.ship-tcs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  background: #283a2e;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.ship-tcs-btn:hover:not(:disabled) {
+  background: #1a2820;
+}
+
+.ship-tcs-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ship-tcs-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+/* Active state for Track button + card highlight */
+.doc-action-btn.active {
+  background: #283a2e;
+  color: #ffffff;
+  border-color: #283a2e;
+}
+
+.doc-action-btn.active:hover {
+  background: #1a2820;
+}
+
+.shipment-card.tracking-open {
+  border-color: #283a2e;
+}
+
+.shipment-track-panel {
+  margin: -6px 0 18px;
+  animation: ship-track-in 0.18s ease;
+}
+
+@keyframes ship-track-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dark theme additions */
+[data-theme='dark'] .shipment-search-box {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='dark'] .shipment-search-box input {
+  color: #f3f4f6;
+}
+
+[data-theme='dark'] .shipment-chip,
+[data-theme='dark'] .shipment-loading-state,
+[data-theme='dark'] .shipment-empty-state {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .shipment-chip .chip-num,
+[data-theme='dark'] .shipment-section-title {
+  color: #f3f4f6;
+}
+
+[data-theme='dark'] .cn-chip {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}

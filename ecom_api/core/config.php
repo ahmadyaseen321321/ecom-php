@@ -27,6 +27,38 @@ define('UPLOAD_DIR', __DIR__ . '/../uploads/');
 define('FCM_SERVER_KEY', 'AIzaSyDrRi3Qr1wtNBSWc8XzGVAfBH9RBMAGrYQ');
 
 // ================================
+// TCS Courier Integration
+// ================================
+// Credentials are read from environment variables first (Apache SetEnv or
+// system env), falling back to these constants. Leave them empty to run the
+// integration in DEMO mode: bookings return simulated CNs, tracking advances
+// through realistic checkpoints every 2 hours, and labels/invoices are
+// generated locally. Fill them in and the same code talks to real TCS.
+//define('TCS_CLIENT_ID', '');
+//define('TCS_CLIENT_SECRET', '');
+//define('TCS_USERNAME', '');
+//define('TCS_PASSWORD', '');
+//define('TCS_ENVIRONMENT', 'sandbox');     // 'sandbox' = devconnect.tcscourier.com, 'production' = ociconnect.tcscourier.com
+//define('TCS_SERVICE_CODE', 'OVERNIGHT');  // confirm the service code list with TCS
+//define('TCS_COST_CENTER_CODE', '');       // pickup cost centre provided by TCS
+//define('TCS_DEFAULT_CITY', 'KARACHI');
+
+// ================================
+// Stripe Payment Gateway
+// ================================
+// Credentials are read from environment variables first (Apache SetEnv or
+// system env), falling back to these constants. Leave STRIPE_SECRET_KEY empty
+// to run the gateway in DEMO mode: checkout uses a local card-entry step with
+// Stripe's test card numbers (4242 4242 4242 4242 succeeds, 4000 0000 0000 0002
+// declines) and orders are marked paid instantly. Fill in your live keys and the
+// same code redirects buyers to Stripe's real hosted checkout page.
+// Get your keys at https://dashboard.stripe.com/apikeys
+//define('STRIPE_SECRET_KEY', '');         // sk_live_... (or sk_test_... for Stripe test mode)
+//define('STRIPE_PUBLISHABLE_KEY', '');    // pk_live_... (or pk_test_...)
+//define('STRIPE_WEBHOOK_SECRET', '');     // whsec_...  (endpoint: /ecom_api/api/payments.php?action=webhook)
+//define('STRIPE_CURRENCY', 'pkr');        // ISO currency code — PKR uses paisa (100 = Rs. 1)
+
+// ================================
 // Error Reporting
 // ================================
 error_reporting(E_ALL);

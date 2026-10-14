@@ -145,6 +145,59 @@ export async function fetchBanners() {
   return apiFetch('/api/banners.php');
 }
 
+// POST /api/banners.php (multipart) — upsert a homepage banner slot.
+// `banner`: { slot, badge_text, title, subtitle, button_text, link_type, product_id, link,
+//             file (optional File), clear_image (bool) }
+export async function saveBannerApi(banner) {
+  const formData = new FormData();
+  formData.append('slot', banner.slot);
+  formData.append('badge_text', banner.badge_text || '');
+  formData.append('title', banner.title || '');
+  formData.append('subtitle', banner.subtitle || '');
+  formData.append('button_text', banner.button_text || '');
+  formData.append('link_type', banner.link_type || 'none');
+  if (banner.link_type === 'product' && banner.product_id) {
+    formData.append('product_id', banner.product_id);
+  }
+  if (banner.link_type === 'url') {
+    formData.append('link', banner.link || '');
+  }
+  if (banner.clear_image) {
+    formData.append('clear_image', '1');
+  }
+  if (banner.file) {
+    formData.append('image', banner.file);
+  }
+
+  return apiFetch('/api/banners.php', { method: 'POST', body: formData });
+}
+
+// DELETE /api/banners.php?slot=N — clear a banner slot
+export async function deleteBannerApi(slot) {
+  return apiFetch(`/api/banners.php?slot=${slot}`, { method: 'DELETE' });
+}
+
+// GET /api/products.php?id=X — single product (used by banner product links)
+export async function fetchProductByIdApi(productId) {
+  return apiFetch(`/api/products.php?id=${productId}`);
+}
+
+// ─── Profile API ──────────────────────────────────────────────
+
+// GET /api/profile.php — current user's profile
+export async function fetchProfileApi() {
+  return apiFetch('/api/profile.php');
+}
+
+// POST /api/profile.php (multipart) — update name/phone/avatar
+export async function updateProfileApi({ fullName, phone, file } = {}) {
+  const formData = new FormData();
+  if (fullName !== undefined && fullName !== null) formData.append('full_name', fullName);
+  if (phone !== undefined && phone !== null) formData.append('phone', phone ?? '');
+  if (file) formData.append('profile_image', file);
+  return apiFetch('/api/profile.php', { method: 'POST', body: formData });
+}
+
 // GET /api/reviews.php?product_id=X
 export async function fetchReviews(productId) {
   const url = `${API_BASE_URL}/api/reviews.php?product_id=${productId}`;
@@ -337,6 +390,11 @@ export async function verifyOtpApi(emailOrPhone, otp) {
 // GET /api/seller_stats.php?days=30
 export async function fetchSellerStatsApi(days = 30) {
   return apiFetch(`/api/seller_stats.php?days=${days}`);
+}
+
+// GET /api/seller_analytics.php?days=30 — detailed KPI drill-down data
+export async function fetchSellerAnalyticsApi(days = 30) {
+  return apiFetch(`/api/seller_analytics.php?days=${days}`);
 }
 
 // GET /api/seller_orders.php?days=30
@@ -570,6 +628,85 @@ export async function deleteAddressApi(addressId) {
     method: 'DELETE',
     body: JSON.stringify({ id: addressId }),
   });
+}
+
+// ─── TCS Courier Integration API ─────────────────────────────────
+
+// GET /api/tcs.php?action=shipments — seller: ready-to-ship queue + active shipments
+export async function tcsFetchShipmentsApi() {
+  return apiFetch('/api/tcs.php?action=shipments');
+}
+
+// POST /api/tcs.php?action=ship&order_id=N — book a TCS consignment (returns tcs_cn)
+export async function tcsShipApi(orderId) {
+  return apiFetch(`/api/tcs.php?action=ship&order_id=${orderId}`, { method: 'POST' });
+}
+
+// POST /api/tcs.php?action=track&order_id=N — refresh tracking from TCS (owner or seller)
+export async function tcsTrackApi(orderId) {
+  return apiFetch(`/api/tcs.php?action=track&order_id=${orderId}`, { method: 'POST' });
+}
+
+// POST /api/tcs.php?action=refresh_all — refresh every active shipment
+export async function tcsRefreshAllApi() {
+  return apiFetch('/api/tcs.php?action=refresh_all', { method: 'POST' });
+}
+
+// GET /api/tcs.php?action=tracking&order_id=N — tracking timeline + CN (customer side)
+export async function tcsTrackingApi(orderId) {
+  return apiFetch(`/api/tcs.php?action=tracking&order_id=${orderId}`);
+}
+
+// POST /api/tcs.php?action=cancel&order_id=N — cancel the TCS booking
+export async function tcsCancelShipmentApi(orderId) {
+  return apiFetch(`/api/tcs.php?action=cancel&order_id=${orderId}`, { method: 'POST' });
+}
+
+// PDF endpoints need the Authorization header, so they are fetched as blobs
+// instead of opened as plain links.
+async function fetchPdfBlob(endpoint) {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    let msg = 'Download failed';
+    try {
+      const j = await res.json();
+      msg = j.message || msg;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
+// Downloads the TCS shipping label PDF (CN printed on it). Anchor downloads
+// are never popup-blocked, unlike window.open of a blob URL.
+export async function openTcsLabelApi(orderId) {
+  const blob = await fetchPdfBlob(`/api/tcs.php?action=label&order_id=${orderId}`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `TCS_Label_Order_${orderId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// Downloads the customer invoice PDF (with the TCS CN printed on it)
+export async function downloadInvoiceApi(orderId) {
+  const blob = await fetchPdfBlob(`/api/invoice.php?order_id=${orderId}`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Invoice_INV-${orderId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 

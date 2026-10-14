@@ -71,6 +71,62 @@
   object-position: center;
 }
 
+/* ─── Seller-configured banner: image fills the whole card at 70% over green ─── */
+.promo-card.has-banner-bg {
+  display: block;
+  position: relative; /* anchors the full-bleed image layer inside the card */
+  min-height: 400px;
+  background-color: #355342;
+}
+
+.promo-card.has-banner-bg .promo-content {
+  position: relative;
+  max-width: 620px;
+  padding: 72px;
+}
+
+.promo-card .banner-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.promo-card .banner-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0.7;
+}
+
+/* Subtle left-side scrim so the text stays readable over any image */
+.promo-card .banner-bg-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(18, 32, 24, 0.5) 0%, rgba(18, 32, 24, 0.18) 50%, rgba(18, 32, 24, 0) 100%);
+}
+
+/* Light text treatment over the green + blended image */
+.promo-card.has-banner-bg .promo-tag {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2efe9;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.promo-card.has-banner-bg .promo-text {
+  color: #d1e0d7;
+}
+
+.promo-card.has-banner-bg .promo-btn {
+  background-color: #698b75;
+  color: #ffffff;
+}
+
+.promo-card.has-banner-bg .promo-btn:hover {
+  background-color: #567662;
+}
+
 @media (max-width: 992px) {
   .promo-card {
     grid-template-columns: 1fr;

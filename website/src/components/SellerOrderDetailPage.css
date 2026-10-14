@@ -441,3 +441,16 @@
   color: #9ca3af !important;
   margin-top: 2px;
 }
+
+/* TCS tracking panel on the order detail page */
+.order-track-panel {
+  margin-top: 18px;
+}
+
+.order-track-panel .ttl {
+  box-shadow: none;
+}
+
+.order-track-panel .panel-header-icon {
+  margin-bottom: 14px;
+}

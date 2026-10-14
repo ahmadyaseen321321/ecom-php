@@ -36,6 +36,7 @@ if ($method == 'GET') {
     $query = "SELECT 
                 o.id, o.user_id, o.total_amount as total, o.discount_amount,
                 o.shipping_address, o.payment_method, o.payment_status,
+                o.tcs_cn, o.tcs_status, o.cod_paid_status,
                 o.order_status as status, o.created_at,
                 o.updated_at as delivery_date, o.cancellation_reason,
                 u.full_name as customer_name, u.phone as customer_phone,

@@ -1,0 +1,316 @@
+/* SellerProfilePage.css — profile setup view inside the seller dashboard */
+.seller-profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.spp-header-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.spp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.spp-back-btn:hover {
+  background: #f9fafb;
+  border-color: #283a2e;
+}
+
+.spp-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+}
+
+.spp-subtitle {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin: 2px 0 0;
+}
+
+/* Loading */
+.spp-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 70px 20px;
+  background: #ffffff;
+  border: 1px solid #edf2ee;
+  border-radius: 16px;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* Card */
+.spp-card {
+  background: #ffffff;
+  border: 1px solid #edf2ee;
+  border-radius: 16px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  max-width: 760px;
+}
+
+/* Avatar */
+.spp-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.spp-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.spp-avatar {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #edf2ee;
+  display: block;
+}
+
+.spp-avatar-camera {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #283a2e;
+  color: #ffffff;
+  border: 3px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.spp-avatar-camera:hover {
+  background: #1a2820;
+}
+
+.spp-hidden-input {
+  display: none;
+}
+
+.spp-avatar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.spp-avatar-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.spp-avatar-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #047857;
+  background: #d1fae5;
+  padding: 4px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.spp-avatar-reset {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  text-align: left;
+  width: fit-content;
+}
+
+/* Form */
+.spp-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.spp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spp-field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.spp-field input {
+  padding: 10px 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: #111827;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.spp-field input:focus:not(:disabled) {
+  border-color: #283a2e;
+  box-shadow: 0 0 0 3px rgba(40, 58, 46, 0.1);
+}
+
+.spp-field input:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.spp-field-hint {
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
+/* Footer */
+.spp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 18px;
+  flex-wrap: wrap;
+}
+
+.spp-saved-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: #9ca3af;
+}
+
+.spp-footer-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.spp-cancel-btn {
+  padding: 10px 18px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.spp-cancel-btn:hover {
+  background: #f9fafb;
+}
+
+.spp-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #283a2e;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+
+.spp-save-btn:hover:not(:disabled) {
+  background: #1a2820;
+}
+
+.spp-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dark theme */
+[data-theme="dark"] .spp-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .spp-title,
+[data-theme="dark"] .spp-avatar-name {
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] .spp-back-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .spp-field label {
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .spp-field input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] .spp-cancel-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #d1d5db;
+}
+
+@media (max-width: 700px) {
+  .spp-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .spp-avatar-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -722,3 +722,223 @@
   background: rgba(217, 119, 6, 0.15);
   color: #fbbf24;
 }
+
+/* ═══ Banner editor: text fields, link target, live preview ═══ */
+.bn-banners-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 12px;
+  justify-content: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.banner-slot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.banner-slot-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 0 4px;
+}
+
+.banner-slot-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.banner-slot-delete:hover {
+  background: #fef2f2;
+}
+
+/* Live preview — image with the overlay text buyers will see */
+.banner-live-preview {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #355342; /* same green as the storefront banner */
+}
+
+.banner-preview-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+  opacity: 0.7; /* image fills the card and blends into the green — matches storefront */
+}
+
+.blp-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, rgba(20, 30, 24, 0.72) 0%, rgba(20, 30, 24, 0.25) 70%, transparent 100%);
+}
+
+.blp-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #d1e0d7;
+  text-transform: uppercase;
+}
+
+.blp-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.15;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  max-width: 75%;
+}
+
+.blp-btn {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #283A2E;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+/* Text overlay fields */
+.banner-text-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 14px;
+  background: #f9fafb;
+  border: 1px solid #f0f1f3;
+  border-radius: 12px;
+}
+
+.banner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.banner-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.banner-field input,
+.banner-field textarea,
+.banner-product-select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #111827;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  resize: none;
+}
+
+.banner-field input:focus,
+.banner-field textarea:focus,
+.banner-product-select:focus {
+  border-color: #283A2E;
+  box-shadow: 0 0 0 3px rgba(40, 58, 46, 0.1);
+}
+
+.banner-field-hint {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Link target pills */
+.banner-link-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.banner-link-pill {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.banner-link-pill:hover {
+  border-color: #283A2E;
+}
+
+.banner-link-pill.active {
+  background: #283A2E;
+  border-color: #283A2E;
+  color: #ffffff;
+}
+
+.bn-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bn-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Dark theme adjustments for the new editor pieces */
+[data-theme="dark"] .banner-text-fields {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .banner-field label {
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .banner-field input,
+[data-theme="dark"] .banner-field textarea,
+[data-theme="dark"] .banner-product-select {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] .banner-link-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .banner-link-pill.active {
+  background: #283A2E;
+  border-color: #283A2E;
+  color: #ffffff;
+}

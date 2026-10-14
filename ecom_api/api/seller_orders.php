@@ -61,7 +61,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     // If admin, or if seller has products, fetch accordingly
     if ($role === 'admin' && empty($sellerId)) {
-        $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, u.full_name as customer_name, u.phone as customer_phone
+        $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, o.tcs_cn, o.tcs_status, o.cod_paid_status, u.full_name as customer_name, u.phone as customer_phone
                   FROM orders o
                   JOIN users u ON o.user_id = u.id
                   ORDER BY o.created_at DESC";
@@ -70,7 +70,7 @@ if ($method === 'GET') {
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
         // Fetch unique orders that contain at least one product from this seller
-        $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, u.full_name as customer_name, u.phone as customer_phone
+        $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, o.tcs_cn, o.tcs_status, o.cod_paid_status, u.full_name as customer_name, u.phone as customer_phone
                   FROM orders o
                   JOIN users u ON o.user_id = u.id
                   JOIN order_items oi ON o.id = oi.order_id
@@ -84,7 +84,7 @@ if ($method === 'GET') {
 
         // Fallback for admin if seller has no orders yet
         if (empty($orders) && $role === 'admin') {
-            $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, u.full_name as customer_name, u.phone as customer_phone
+            $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, o.tcs_cn, o.tcs_status, o.cod_paid_status, u.full_name as customer_name, u.phone as customer_phone
                       FROM orders o
                       JOIN users u ON o.user_id = u.id
                       ORDER BY o.created_at DESC";

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import { getImageUrl } from '../services/api';
+import { getImageUrl, tcsTrackingApi, openTcsLabelApi } from '../services/api';
+import TrackingTimeline from './TrackingTimeline';
 import {
   Printer,
   CheckCircle2,
@@ -18,13 +19,46 @@ import './SellerOrderDetailPage.css';
 export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }) {
   const { showToast } = useCart();
 
+  // Hooks run before the null-order early return below — derive the id safely.
+  const rawOrderId = String(order?.id ?? order?.order_id ?? '');
+  const numericId = rawOrderId.replace(/[^0-9]/g, '');
+  const [tracking, setTracking] = useState(null);
+  const [trackLoading, setTrackLoading] = useState(false);
+
+  const loadTracking = async () => {
+    if (!numericId) return;
+    setTrackLoading(true);
+    const res = await tcsTrackingApi(numericId);
+    if (res) setTracking(res);
+    setTrackLoading(false);
+  };
+
+  useEffect(() => {
+    setTracking(null);
+    loadTracking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numericId]);
+
   if (!order) return null;
 
   // `id` arrives as a number from the API (and may already be formatted by
   // other callers) — normalise to a '#125' style string so .replace() below
   // never runs on a number.
-  const rawOrderId = String(order.id ?? order.order_id ?? '');
   const orderId = rawOrderId ? (rawOrderId.startsWith('#') ? rawOrderId : `#${rawOrderId}`) : '#ORD-1';
+
+  const handlePrintLabel = async () => {
+    const cn = tracking?.tcs_cn || order.tcs_cn;
+    if (!cn) {
+      showToast('Not booked with TCS yet — use the Shipments tab to book', 'error');
+      return;
+    }
+    try {
+      await openTcsLabelApi(numericId);
+      showToast('TCS label downloaded — open the PDF to print');
+    } catch (e) {
+      showToast(e.message || 'Label failed', 'error');
+    }
+  };
 
   // "2026-10-13 17:22:28" -> "Oct 13, 2026, 5:22 PM"
   const formatPlacedAt = (value) => {
@@ -75,7 +109,7 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
           <button className="btn-outline-dark" onClick={() => onOpenOrderChat ? onOpenOrderChat(order) : showToast(`Opening chat with ${customerName}...`)}>
             Contact Customer
           </button>
-          <button className="btn-print-label" onClick={() => showToast(`Printing shipping label for ${orderId}...`)}>
+          <button className="btn-print-label" onClick={handlePrintLabel}>
             <Printer size={16} />
             <span>Print Label</span>
           </button>
@@ -187,16 +221,30 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
                 <span className="carrier-sub">Tracked & Verified</span>
 
                 <div className="ship-meta-sec mt-16">
-                  <span className="address-label">TRACKING ID</span>
-                  <p className="bold-p">TRK-{orderId.replace(/[^0-9]/g, '') || '9902'}</p>
+                  <span className="address-label">TCS TRACKING ID (CN)</span>
+                  <p className="bold-p">{tracking?.tcs_cn || order.tcs_cn || 'Not booked yet'}</p>
                 </div>
 
                 <div className="ship-meta-sec mt-12">
                   <span className="address-label">STATUS</span>
-                  <p className="bold-p">{order.status || 'Active Dispatch'}</p>
+                  <p className="bold-p">{tracking?.tcs_status || order.tcs_status || order.status || 'Active Dispatch'}</p>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* TCS live tracking timeline */}
+          <div className="detail-card-panel order-track-panel">
+            <div className="panel-header-icon">
+              <Truck size={18} />
+              <h3>TCS Tracking</h3>
+            </div>
+            <TrackingTimeline
+              tracking={tracking}
+              loading={trackLoading}
+              onRefresh={loadTracking}
+              notShippedText="This order hasn't been booked with TCS yet — book it from the Shipments tab."
+            />
           </div>
         </div>
 

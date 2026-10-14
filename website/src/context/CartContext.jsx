@@ -247,6 +247,20 @@ export const CartProvider = ({ children }) => {
     showToast('Logged out successfully');
   };
 
+  // Patch the logged-in user (name, avatar, phone…) and persist it, so the
+  // header/dashboard refresh without a full reload.
+  const updateUser = (patch) => {
+    setUser((prev) => {
+      const next = { ...(prev || {}), ...(typeof patch === 'function' ? patch(prev) : patch) };
+      try {
+        localStorage.setItem('user', JSON.stringify(next));
+      } catch (e) {
+        console.error('Failed to persist user:', e);
+      }
+      return next;
+    });
+  };
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -359,6 +373,7 @@ export const CartProvider = ({ children }) => {
         navigateTo,
         login,
         logout,
+        updateUser,
         addToCart,
         removeFromCart,
         updateQuantity,

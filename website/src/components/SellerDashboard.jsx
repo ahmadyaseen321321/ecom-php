@@ -3,6 +3,8 @@ import { useCart } from '../context/CartContext';
 import { useSocket } from '../context/SocketContext';
 import SellerOrdersPage from './SellerOrdersPage';
 import SellerOrderDetailPage from './SellerOrderDetailPage';
+import SellerAnalyticsDetail from './SellerAnalyticsDetail';
+import SellerProfilePage from './SellerProfilePage';
 import SellerReviewsPage from './SellerReviewsPage';
 import SellerShipmentPage from './SellerShipmentPage';
 import SellerSettingsPage from './SellerSettingsPage';
@@ -70,7 +72,8 @@ import {
   Download,
   CreditCard,
   Bell,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 import './SellerDashboard.css';
 
@@ -80,6 +83,15 @@ export default function SellerDashboard() {
 
   // Active Tab: 'overview' | 'products' | 'orders' | 'reviews'
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Collapsible sidebar — collapsed shows icon-only rail
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // KPI drill-down: which metric's analytics page is open ('aov' | 'orders' | 'revenue' | null)
+  const [analyticsMetric, setAnalyticsMetric] = useState(null);
+
+  // Topbar profile dropdown menu
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   // Stats & Timeframe
   const [timeframeDays, setTimeframeDays] = useState(30);
@@ -537,6 +549,23 @@ export default function SellerDashboard() {
     }
   };
 
+  // Close the topbar profile dropdown on outside click / Escape
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+    const onDocClick = (e) => {
+      if (!e.target.closest?.('.topbar-user-profile')) setIsProfileMenuOpen(false);
+    };
+    const onEsc = (e) => {
+      if (e.key === 'Escape') setIsProfileMenuOpen(false);
+    };
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [isProfileMenuOpen]);
+
   // Real-Time Socket Listeners for Seller Dashboard
   useEffect(() => {
     if (!socket) return;
@@ -549,6 +578,13 @@ export default function SellerDashboard() {
       loadOrders(timeframeDays);
       loadStats(timeframeDays);
       loadProducts();
+    };
+
+    // 1b. TCS tracking transitions (picked up / in transit / delivered)
+    const handleOrderStatusUpdated = (update) => {
+      console.log('[SellerDashboard] Order status updated via TCS:', update);
+      loadOrders(timeframeDays);
+      loadStats(timeframeDays);
     };
 
     // 2. Listen for incoming chat messages in real time
@@ -581,10 +617,12 @@ export default function SellerDashboard() {
     };
 
     socket.on('new_order_received', handleNewOrder);
+    socket.on('order_status_updated', handleOrderStatusUpdated);
     socket.on('receive_message', handleIncomingMessage);
 
     return () => {
       socket.off('new_order_received', handleNewOrder);
+      socket.off('order_status_updated', handleOrderStatusUpdated);
       socket.off('receive_message', handleIncomingMessage);
     };
   }, [socket, timeframeDays, selectedConvId, conversations]);
@@ -753,7 +791,8 @@ export default function SellerDashboard() {
     setShowAddProductView(false);
     setEditingProduct(null);
     setSelectedSellerOrder(null);
-    if (['overview', 'products', 'orders', 'reviews', 'messages', 'shipment', 'settings', 'banners'].includes(id)) {
+    setAnalyticsMetric(null);
+    if (['overview', 'products', 'orders', 'reviews', 'messages', 'shipment', 'settings', 'banners', 'profile'].includes(id)) {
       setActiveTab(id);
     } else {
       showToast(`${id} screen coming soon!`);
@@ -899,7 +938,7 @@ export default function SellerDashboard() {
   return (
     <div className="seller-dashboard-layout">
       {/* ─── LEFT SIDEBAR ────────────────────────────────────────────── */}
-      <aside className="dashboard-sidebar">
+      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'is-collapsed' : ''}`}>
         <div className="sidebar-brand">
           <div className="brand-logo-icon">
             <div className="play-triangle"></div>
@@ -913,6 +952,7 @@ export default function SellerDashboard() {
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
               onClick={() => handleNavClick(item.id)}
+              title={item.label}
             >
               <item.icon size={18} />
               <span>{item.label}</span>
@@ -922,28 +962,118 @@ export default function SellerDashboard() {
 
         {/* Logout Button */}
         <div className="sidebar-logout-section">
-          <button className="nav-item logout-btn" onClick={logout}>
+          <button className="nav-item logout-btn" onClick={logout} title="Logout">
             <LogOut size={18} />
             <span>Logout</span>
           </button>
         </div>
+
+        {/* Collapse / expand handle */}
+        <button
+          className="sidebar-collapse-handle"
+          onClick={() => setIsSidebarCollapsed((c) => !c)}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <ChevronLeft size={16} className={isSidebarCollapsed ? 'rotated' : ''} />
+        </button>
       </aside>
 
       {/* ─── MAIN CONTENT ────────────────────────────────────────────── */}
-      <div className="dashboard-main-area">
+      <div className={`dashboard-main-area ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         {/* Top Header Bar */}
         <header className="dashboard-topbar">
-          <div className="topbar-user-profile">
+          <div
+            className={`topbar-user-profile ${isProfileMenuOpen ? 'menu-open' : ''}`}
+            onClick={() => setIsProfileMenuOpen((o) => !o)}
+            onKeyDown={(e) => e.key === 'Enter' && setIsProfileMenuOpen((o) => !o)}
+            role="button"
+            tabIndex={0}
+            aria-haspopup="menu"
+            aria-expanded={isProfileMenuOpen}
+            title="Account menu"
+          >
             <img
-              src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop"}
+              src={
+                user?.profile_image
+                  ? getImageUrl(user.profile_image)
+                  : user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
+              }
               alt="User Avatar"
               className="user-avatar-img"
             />
             <div className="user-text-info">
-              <span className="user-name">{user?.full_name || 'Bishop Heahmund'}</span>
-              <span className="user-email">{user?.email || 'bishophea024@gmail.com'}</span>
+              <span className="user-name">{user?.full_name || 'Seller'}</span>
+              <span className="user-email">{user?.email || ''}</span>
             </div>
-            <ChevronDown size={16} className="user-dropdown-arrow" />
+            <ChevronDown size={16} className={`user-dropdown-arrow ${isProfileMenuOpen ? 'rotated' : ''}`} />
+
+            {/* Detailed account menu */}
+            {isProfileMenuOpen && (
+              <div className="user-menu-dropdown" onClick={(e) => e.stopPropagation()} role="menu">
+                <div className="user-menu-header">
+                  <img
+                    src={
+                      user?.profile_image
+                        ? getImageUrl(user.profile_image)
+                        : user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
+                    }
+                    alt=""
+                    className="user-menu-avatar"
+                  />
+                  <div className="user-menu-meta">
+                    <span className="user-menu-name">{user?.full_name || 'Seller'}</span>
+                    <span className="user-menu-email">{user?.email || ''}</span>
+                    <span className="user-menu-role">
+                      <ShieldCheck size={12} />
+                      {user?.role === 'admin' ? 'Administrator' : 'Seller Account'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="user-menu-section-label">Account</div>
+                <button
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    setShowAddProductView(false);
+                    setEditingProduct(null);
+                    setSelectedSellerOrder(null);
+                    setAnalyticsMetric(null);
+                    setActiveTab('profile');
+                  }}
+                >
+                  <User size={15} />
+                  <span>My Profile</span>
+                  <span className="user-menu-item-hint">Setup</span>
+                </button>
+                <button className="user-menu-item" role="menuitem" onClick={() => { setIsProfileMenuOpen(false); handleNavClick('settings'); }}>
+                  <Settings size={15} />
+                  <span>Store Settings</span>
+                </button>
+
+                <div className="user-menu-section-label">Quick Access</div>
+                <button className="user-menu-item" role="menuitem" onClick={() => { setIsProfileMenuOpen(false); handleNavClick('orders'); }}>
+                  <ShoppingBag size={15} />
+                  <span>Orders</span>
+                </button>
+                <button className="user-menu-item" role="menuitem" onClick={() => { setIsProfileMenuOpen(false); handleNavClick('messages'); }}>
+                  <MessageSquare size={15} />
+                  <span>Messages</span>
+                </button>
+                <button className="user-menu-item" role="menuitem" onClick={() => { setIsProfileMenuOpen(false); handleNavClick('reviews'); }}>
+                  <Star size={15} />
+                  <span>Reviews</span>
+                </button>
+
+                <div className="user-menu-divider" />
+                <button className="user-menu-item user-menu-logout" role="menuitem" onClick={() => { setIsProfileMenuOpen(false); logout(); }}>
+                  <LogOut size={15} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -951,6 +1081,14 @@ export default function SellerDashboard() {
         <main className="dashboard-body">
           {activeTab === 'overview' && (
             <div className="overview-page-wrapper animate-fade-in">
+              {/* KPI drill-down page — opens when a metric card is clicked */}
+              {analyticsMetric ? (
+                <SellerAnalyticsDetail
+                  metric={analyticsMetric}
+                  days={timeframeDays}
+                  onBack={() => setAnalyticsMetric(null)}
+                />
+              ) : (<>
               {/* Welcome Banner + Timeframe Filter */}
               <div className="welcome-header">
                 <div className="welcome-header-text">
@@ -968,6 +1106,7 @@ export default function SellerDashboard() {
                       className="timeframe-select"
                       aria-label="Filter stats timeframe"
                     >
+                      <option value={1}>Last 24 Hours</option>
                       <option value={7}>Last 7 Days</option>
                       <option value={14}>Last 14 Days</option>
                       <option value={30}>Last 30 Days</option>
@@ -981,10 +1120,17 @@ export default function SellerDashboard() {
                 </div>
               </div>
 
-              {/* 3 Metric Cards Row */}
+              {/* 3 Metric Cards Row — click a card for detailed analytics */}
               <div className="metrics-row-cards">
                 {/* Metric 1: Avg Order Value (Dark Green) */}
-                <div className="metric-card dark-green-card">
+                <div
+                  className={`metric-card dark-green-card metric-card-clickable ${analyticsMetric === 'aov' ? 'metric-card-open' : ''}`}
+                  onClick={() => setAnalyticsMetric('aov')}
+                  role="button"
+                  tabIndex={0}
+                  title="Click for detailed AOV analytics"
+                  onKeyDown={(e) => e.key === 'Enter' && setAnalyticsMetric('aov')}
+                >
                   <div className="metric-header-row">
                     <span className="metric-label">AVG . Order Value</span>
                     <div className="metric-badge-icon">
@@ -1001,12 +1147,20 @@ export default function SellerDashboard() {
                   <div className="metric-trend-pill positive">
                     {stats?.sales_percentage !== undefined ? (
                       stats.sales_percentage >= 0 ? `+ ${stats.sales_percentage}%` : `${stats.sales_percentage}%`
-                    ) : '+ 3.16%'} <span>{timeframeDays === 7 ? 'From last week' : timeframeDays === 30 ? 'From last month' : timeframeDays >= 365 ? 'From last year' : 'From prev period'}</span>
+                    ) : '+ 3.16%'} <span>{timeframeDays === 1 ? 'From yesterday' : timeframeDays === 7 ? 'From last week' : timeframeDays === 30 ? 'From last month' : timeframeDays >= 365 ? 'From last year' : 'From prev period'}</span>
                   </div>
+                  <span className="metric-drill-hint">View details →</span>
                 </div>
 
                 {/* Metric 2: Total Orders (White) */}
-                <div className="metric-card white-card">
+                <div
+                  className={`metric-card white-card metric-card-clickable ${analyticsMetric === 'orders' ? 'metric-card-open' : ''}`}
+                  onClick={() => setAnalyticsMetric('orders')}
+                  role="button"
+                  tabIndex={0}
+                  title="Click for detailed orders analytics"
+                  onKeyDown={(e) => e.key === 'Enter' && setAnalyticsMetric('orders')}
+                >
                   <div className="metric-header-row">
                     <span className="metric-label">Total Orders</span>
                     <div className="metric-badge-icon muted">
@@ -1023,10 +1177,18 @@ export default function SellerDashboard() {
                   <div className={`metric-trend-pill ${stats?.order_count > 0 ? 'positive' : 'negative'}`}>
                     {stats?.order_count > 0 ? `+${stats.order_count}` : '0'} <span>in selected period</span>
                   </div>
+                  <span className="metric-drill-hint">View details →</span>
                 </div>
 
                 {/* Metric 3: Total / Lifetime Value (White) */}
-                <div className="metric-card white-card">
+                <div
+                  className={`metric-card white-card metric-card-clickable ${analyticsMetric === 'revenue' ? 'metric-card-open' : ''}`}
+                  onClick={() => setAnalyticsMetric('revenue')}
+                  role="button"
+                  tabIndex={0}
+                  title="Click for detailed revenue analytics"
+                  onKeyDown={(e) => e.key === 'Enter' && setAnalyticsMetric('revenue')}
+                >
                   <div className="metric-header-row">
                     <span className="metric-label">{timeframeDays >= 3650 ? 'Lifetime Value' : 'Period Revenue'}</span>
                     <div className="metric-badge-icon muted">
@@ -1043,8 +1205,9 @@ export default function SellerDashboard() {
                   <div className="metric-trend-pill positive">
                     {stats?.sales_percentage !== undefined ? (
                       stats.sales_percentage >= 0 ? `+ ${stats.sales_percentage}%` : `${stats.sales_percentage}%`
-                    ) : '+ 2.24%'} <span>{timeframeDays === 7 ? 'From last week' : timeframeDays === 30 ? 'From last month' : timeframeDays >= 365 ? 'From last year' : 'From prev period'}</span>
+                    ) : '+ 2.24%'} <span>{timeframeDays === 1 ? 'From yesterday' : timeframeDays === 7 ? 'From last week' : timeframeDays === 30 ? 'From last month' : timeframeDays >= 365 ? 'From last year' : 'From prev period'}</span>
                   </div>
+                  <span className="metric-drill-hint">View details →</span>
                 </div>
               </div>
 
@@ -1254,6 +1417,7 @@ export default function SellerDashboard() {
                   </table>
                 </div>
               </div>
+              </>)}
             </div>
           )}
 
@@ -1703,6 +1867,11 @@ export default function SellerDashboard() {
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <SellerSettingsPage />
+          )}
+
+          {/* Profile Setup (opened from the topbar account menu) */}
+          {activeTab === 'profile' && (
+            <SellerProfilePage onBack={() => setActiveTab('overview')} />
           )}
 
           {/* Banner & Notifications Tab */}

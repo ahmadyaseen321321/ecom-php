@@ -51,6 +51,31 @@ $source = isset($requestParams['source']) ? $requestParams['source'] : '';
 // ROUTE 1: GET (Fetch Products)
 // ---------------------------------------------------------
 if ($method === 'GET') {
+    // Single product by id — used by homepage banner product links.
+    if ($id > 0) {
+        $query = "SELECT p.*, c.name as category_name,
+                  (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_main DESC, id ASC LIMIT 1) as main_image,
+                  (SELECT GROUP_CONCAT(image_url SEPARATOR ',') FROM product_images WHERE product_id = p.id) as all_images,
+                  (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi
+                   JOIN orders o ON o.id = oi.order_id
+                   WHERE oi.product_id = p.id AND o.order_status NOT IN ('cancelled', 'returned')) as sold_count
+                  FROM products p
+                  LEFT JOIN categories c ON p.category_id = c.id
+                  WHERE p.id = :id AND p.status != 'deleted'
+                  LIMIT 1";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($product) {
+            echo json_encode(["status" => "success", "data" => $product]);
+        } else {
+            http_response_code(404);
+            echo json_encode(["status" => "error", "message" => "Product not found"]);
+        }
+        exit();
+    }
+
     $category_id = $requestParams['category_id'] ?? null;
     $search = $requestParams['search'] ?? null;
     $seller_id = $requestParams['seller_id'] ?? null;
@@ -73,6 +98,7 @@ if ($method === 'GET') {
                        WHERE oi.product_id = p.id AND o.order_status NOT IN ('cancelled', 'returned')) as sold_count
                       FROM products p 
                       LEFT JOIN categories c ON p.category_id = c.id
+                      WHERE p.status != 'deleted'
                       ORDER BY p.created_at DESC";
             $stmt = $db->prepare($query);
             $stmt->execute();
@@ -90,7 +116,7 @@ if ($method === 'GET') {
                   FROM products p 
                   LEFT JOIN categories c ON p.category_id = c.id 
                   JOIN sellers s ON p.seller_id = s.id 
-                  WHERE s.user_id = :user_id
+                  WHERE s.user_id = :user_id AND p.status != 'deleted'
                   ORDER BY p.created_at DESC";
         $stmt = $db->prepare($query);
         $stmt->bindParam(':user_id', $userId);
@@ -111,13 +137,16 @@ if ($method === 'GET') {
               LEFT JOIN categories c ON p.category_id = c.id";
     $params = [];
 
+    // Archived (soft-deleted) products are kept for order history but hidden
+    $query .= " WHERE p.status != 'deleted'";
+
     if ($category_id) {
-        $query .= " WHERE p.category_id = :category_id";
+        $query .= " AND p.category_id = :category_id";
         $params[':category_id'] = $category_id;
     }
 
     if ($search) {
-        $query .= ($category_id ? " AND" : " WHERE") . " (p.name LIKE :search OR p.description LIKE :search_desc)";
+        $query .= " AND (p.name LIKE :search OR p.description LIKE :search_desc)";
         $like = "%$search%";
         $params[':search'] = $like;
         $params[':search_desc'] = $like;
@@ -410,7 +439,10 @@ if ($method === 'DELETE') {
         }
     }
 
-    $query = "DELETE FROM products WHERE id = :id";
+    // Soft delete: archive the product instead of removing the row.
+    // Order items reference products, and hard deletes orphan that history
+    // (silently deflating revenue/order stats).
+    $query = "UPDATE products SET status = 'deleted' WHERE id = :id";
     $stmt = $db->prepare($query);
     $stmt->bindParam(':id', $id);
     if ($stmt->execute()) {

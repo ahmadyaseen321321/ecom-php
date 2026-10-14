@@ -270,6 +270,29 @@ export async function cancelOrderApi(orderId, reason = 'Changed my mind') {
   });
 }
 
+// ─── Stripe Payments ───────────────────────────────────────────────
+
+// GET /api/payments.php?action=mode
+export async function fetchPaymentModeApi() {
+  return apiFetch('/api/payments.php?action=mode');
+}
+
+// POST /api/payments.php?action=create  — create order + Stripe Checkout Session
+export async function createPaymentSessionApi(payload) {
+  return apiFetch('/api/payments.php?action=create', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// POST /api/payments.php?action=confirm — mark order paid (demo: simulate, live: verify)
+export async function confirmPaymentApi(payload) {
+  return apiFetch('/api/payments.php?action=confirm', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // POST /auth/login.php
 export async function loginUser(email, password) {
   const url = `${API_BASE_URL}/auth/login.php`;

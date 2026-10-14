@@ -367,6 +367,18 @@
   color: #6b7280;
 }
 
+/* Paid / Pending / Failed payment status pill (card vs COD orders) */
+.payment-method-badge-box .pay-status-chip {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 /* Order Vertical Timeline */
 .order-vertical-timeline {
   display: flex;

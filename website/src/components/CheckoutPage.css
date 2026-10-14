@@ -270,6 +270,26 @@
   font-weight: 500;
 }
 
+/* Stripe test-mode hint banner */
+.stripe-demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #EEF4FF;
+  border: 1px solid #C9DBFF;
+  border-radius: 12px;
+  color: #1E3A8A;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.stripe-demo-banner strong {
+  font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
 /* Right Summary Sidebar */
 .checkout-summary-col {
   position: sticky;

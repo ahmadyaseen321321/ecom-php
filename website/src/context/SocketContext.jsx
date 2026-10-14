@@ -201,6 +201,24 @@ export const SocketProvider = ({ children }) => {
     }
   }, [user, socket, isConnected]);
 
+  // Clear notifications on logout. We track the previous user with a ref so we
+  // only wipe when a logged-in user actually signs out (user -> null), never on
+  // the initial mount or a page reload while still logged in.
+  const prevUserRef = useRef(user);
+  useEffect(() => {
+    const wasLoggedIn = !!prevUserRef.current;
+    const isLoggedIn = !!user;
+    if (wasLoggedIn && !isLoggedIn) {
+      // User signed out — drop their notifications from state + storage so the
+      // bell badge doesn't linger for the next person on this browser.
+      setNotifications([]);
+      try {
+        localStorage.removeItem('app_notifications');
+      } catch {}
+    }
+    prevUserRef.current = user;
+  }, [user]);
+
   // Auto-dismiss floating toast alert after 6 seconds
   useEffect(() => {
     if (toastAlert) {

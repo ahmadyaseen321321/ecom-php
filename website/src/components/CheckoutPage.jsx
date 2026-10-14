@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import { getImageUrl, placeOrderApi } from '../services/api';
+import {
+  getImageUrl,
+  placeOrderApi,
+  fetchPaymentModeApi,
+  createPaymentSessionApi,
+  confirmPaymentApi
+} from '../services/api';
 import {
   ShieldCheck,
   CreditCard,
@@ -17,7 +23,7 @@ import {
 import './CheckoutPage.css';
 
 export default function CheckoutPage() {
-  const { cart, cartSubtotal, user, setCart, navigateTo, showToast, setLastOrderData } = useCart();
+  const { cart, cartSubtotal, user, clearCart, navigateTo, showToast, setLastOrderData } = useCart();
 
   // Form State
   const [firstName, setFirstName] = useState(user?.full_name?.split(' ')[0] || '');
@@ -28,9 +34,10 @@ export default function CheckoutPage() {
   const [zipCode, setZipCode] = useState('');
 
   // Payment Method
-  const [paymentMethod, setPaymentMethod] = useState('credit'); // 'credit' | 'cod'
+  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'cod'
+  const [paymentMode, setPaymentMode] = useState('demo');     // 'demo' | 'live'
 
-  // Credit Card Form
+  // Card Form (used for the in-app demo checkout; live mode hands off to Stripe)
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvc, setCvc] = useState('');
@@ -41,12 +48,30 @@ export default function CheckoutPage() {
     window.scrollTo(0, 0);
   }, []);
 
+  // Which gateway mode are we in? Drives whether card entry is local (demo)
+  // or handed off to Stripe's hosted page (live).
+  useEffect(() => {
+    let mounted = true;
+    fetchPaymentModeApi()
+      .then((res) => {
+        if (mounted && res && res.mode) setPaymentMode(res.mode);
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
   const shippingCost = 0;
   const tax = 0;
   const totalAmount = cartSubtotal + shippingCost + tax;
 
   const formatPKR = (val) => {
     return `Rs. ${Number(val || 0).toLocaleString('en-PK')}`;
+  };
+
+  // Keep the card number readable (groups of 4) without changing the value length.
+  const handleCardNumberChange = (val) => {
+    const digits = val.replace(/\D/g, '').slice(0, 16);
+    setCardNumber(digits.replace(/(.{4})/g, '$1 ').trim());
   };
 
   const handlePlaceOrder = async (e) => {
@@ -63,56 +88,99 @@ export default function CheckoutPage() {
       return;
     }
 
+    const itemsPayload = (cart || []).map((item) => ({
+      product_id: item.id,
+      quantity: item.quantity,
+      price: item.price,
+    }));
+
+    const fullAddress = `${addressLine1}, ${city} ${zipCode ? '(' + zipCode + ')' : ''} | Phone: ${phone}`;
+
     try {
       setIsSubmitting(true);
 
-      const itemsPayload = (cart || []).map((item) => ({
-        product_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-      }));
+      // ── Cash on Delivery: save the order straight away ──────────────
+      if (paymentMethod === 'cod') {
+        let savedOrder = null;
+        try {
+          savedOrder = await placeOrderApi({
+            total: totalAmount,
+            address: fullAddress,
+            payment_method: 'Cash on Delivery',
+            payment_status: 'pending',
+            items: itemsPayload,
+          });
+        } catch (apiErr) {
+          console.log('placeOrderApi response:', apiErr);
+        }
 
-      const fullAddress = `${addressLine1}, ${city} ${zipCode ? '(' + zipCode + ')' : ''} | Phone: ${phone}`;
+        const codOrderId = savedOrder?.order_id;
+        if (!codOrderId) {
+          showToast('Could not place your order. Please check your connection and try again.');
+          return;
+        }
 
-      // Persist FIRST — the real order id comes back from the API and orders.php
-      // emits order_placed to the seller dashboard with that same id. Emitting a
-      // guessed id beforehand produced phantom orders the dashboard could never
-      // match (and a duplicate notification on top).
-      let savedOrder = null;
-      try {
-        savedOrder = await placeOrderApi({
-          total: totalAmount,
-          address: fullAddress,
-          payment_method: paymentMethod === 'credit' ? 'Credit Card' : 'Cash on Delivery',
-          items: itemsPayload,
+        setLastOrderData({
+          orderId: `${codOrderId}`,
+          total: totalAmount || 0,
+          firstItem: cart[0]?.name || 'Items',
+          itemCount: (cart || []).reduce((acc, item) => acc + (item.quantity || 1), 0),
+          firstImage: cart[0]?.image || 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&auto=format&fit=crop&q=80'
         });
-      } catch (apiErr) {
-        console.log('placeOrderApi response:', apiErr);
-      }
-
-      const realOrderId = savedOrder?.order_id;
-      if (!realOrderId) {
-        // Nothing was saved — keep the cart so the user can simply retry
-        showToast('Could not place your order. Please check your connection and try again.');
+        clearCart();
+        showToast('🎉 Order placed successfully! Pay on delivery.');
+        navigateTo('order-success');
         return;
       }
 
-      const orderInfo = {
-        orderId: `#${realOrderId}`,
-        total: totalAmount || 0,
+      // ── Card (Stripe): create order + a Checkout Session ────────────
+      const session = await createPaymentSessionApi({
+        address: fullAddress,
+        payment_method: 'Card (Stripe)',
+        origin: window.location.origin,
+        items: itemsPayload,
+      });
+
+      if (!session || !session.order_id) {
+        showToast('Could not start the payment. Please try again.');
+        return;
+      }
+
+      // LIVE mode → hand the buyer to Stripe's hosted checkout page.
+      if (session.mode === 'live' && session.url) {
+        showToast('Redirecting to secure payment…');
+        window.location.href = session.url;
+        return;
+      }
+
+      // DEMO mode → confirm the payment in-app using the card entered below.
+      if (!cardNumber || cardNumber.replace(/\s/g, '').length < 12) {
+        showToast('Enter a test card number (4242 4242 4242 4242) to simulate payment.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const result = await confirmPaymentApi({
+        order_id: session.order_id,
+        session_id: session.session_id,
+        card_number: cardNumber,
+      });
+
+      if (!result || !result.paid) {
+        showToast('Payment failed. Your card was declined — try 4242 4242 4242 4242.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      setLastOrderData({
+        orderId: `${session.order_id}`,
+        total: session.total || totalAmount || 0,
         firstItem: cart[0]?.name || 'Items',
         itemCount: (cart || []).reduce((acc, item) => acc + (item.quantity || 1), 0),
         firstImage: cart[0]?.image || 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&auto=format&fit=crop&q=80'
-      };
-
-      // Save order data for Order Success page
-      setLastOrderData(orderInfo);
-
-      // Clear cart
-      setCart([]);
-      showToast('🎉 Order placed successfully!');
-
-      // Navigate to order-success page
+      });
+      clearCart();
+      showToast('💳 Payment successful! Order confirmed.');
       navigateTo('order-success');
     } catch (err) {
       console.error('Error handling order placement:', err);
@@ -228,11 +296,11 @@ export default function CheckoutPage() {
                 <div className="payment-tabs-row">
                   <button
                     type="button"
-                    className={`payment-tab-btn ${paymentMethod === 'credit' ? 'active' : ''}`}
-                    onClick={() => setPaymentMethod('credit')}
+                    className={`payment-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
+                    onClick={() => setPaymentMethod('card')}
                   >
                     <CreditCard size={18} />
-                    <span>Credit / Debit Card</span>
+                    <span>Card (Stripe)</span>
                   </button>
 
                   <button
@@ -245,42 +313,61 @@ export default function CheckoutPage() {
                   </button>
                 </div>
 
-                {/* Credit Card Input Form */}
-                {paymentMethod === 'credit' && (
+                {/* Card (Stripe) */}
+                {paymentMethod === 'card' && (
                   <div className="card-form-subwrap animate-fade-in">
-                    <div className="input-group">
-                      <label>Card Number</label>
-                      <div className="input-with-icon">
-                        <input
-                          type="text"
-                          placeholder="0000 0000 0000 0000"
-                          value={cardNumber}
-                          onChange={(e) => setCardNumber(e.target.value)}
-                        />
-                        <Lock size={16} className="input-lock-icon" />
+                    {paymentMode === 'live' ? (
+                      // Live mode: Stripe's hosted page collects the card.
+                      <div className="cod-notice-box">
+                        <Lock size={20} color="#3D5647" />
+                        <p>You'll be redirected to Stripe's secure checkout to complete your payment.</p>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="stripe-demo-banner">
+                          <ShieldCheck size={16} />
+                          <span>
+                            Test mode — use <strong>4242 4242 4242 4242</strong> to pay, or{' '}
+                            <strong>4000 0000 0000 0002</strong> to see a decline.
+                          </span>
+                        </div>
 
-                    <div className="form-row-two">
-                      <div className="input-group">
-                        <label>Expiry Date</label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          value={expiryDate}
-                          onChange={(e) => setExpiryDate(e.target.value)}
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>CVC</label>
-                        <input
-                          type="text"
-                          placeholder="123"
-                          value={cvc}
-                          onChange={(e) => setCvc(e.target.value)}
-                        />
-                      </div>
-                    </div>
+                        <div className="input-group">
+                          <label>Card Number</label>
+                          <div className="input-with-icon">
+                            <input
+                              type="text"
+                              placeholder="4242 4242 4242 4242"
+                              value={cardNumber}
+                              onChange={(e) => handleCardNumberChange(e.target.value)}
+                              inputMode="numeric"
+                            />
+                            <Lock size={16} className="input-lock-icon" />
+                          </div>
+                        </div>
+
+                        <div className="form-row-two">
+                          <div className="input-group">
+                            <label>Expiry Date</label>
+                            <input
+                              type="text"
+                              placeholder="MM/YY"
+                              value={expiryDate}
+                              onChange={(e) => setExpiryDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="input-group">
+                            <label>CVC</label>
+                            <input
+                              type="text"
+                              placeholder="123"
+                              value={cvc}
+                              onChange={(e) => setCvc(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 

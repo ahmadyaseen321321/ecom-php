@@ -196,7 +196,16 @@ if ($action === 'confirm') {
     }
 
     finalizePayment($db, $orderId, $intent);
-    echo json_encode(["status" => "success", "data" => ["order_id" => $orderId, "paid" => true]]);
+    $fresh = loadOrder($db, $orderId);
+    $cnt = $db->prepare("SELECT COALESCE(SUM(quantity),0) FROM order_items WHERE order_id = :id");
+    $cnt->bindValue(':id', $orderId, PDO::PARAM_INT);
+    $cnt->execute();
+    echo json_encode(["status" => "success", "data" => [
+        "order_id"   => $orderId,
+        "paid"       => true,
+        "total"      => $fresh ? (float)$fresh['total_amount'] : 0,
+        "item_count" => (int)$cnt->fetchColumn(),
+    ]]);
     exit();
 }
 

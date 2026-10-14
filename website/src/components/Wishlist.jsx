@@ -29,20 +29,21 @@ export default function Wishlist() {
 
   if (!user) {
     return (
-      <div className="wishlist-page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 160px)', padding: '40px 20px' }}>
+      <div className="wishlist-page-wrapper" style={{ display: 'flex', alignItems: 'stretch', minHeight: 'calc(100vh - 160px)', padding: 0 }}>
         <div 
           className="animate-fade-in"
           style={{
             background: '#ffffff',
-            borderRadius: '24px',
-            padding: '48px 36px',
-            maxWidth: '480px',
+            flex: 1,
             width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             textAlign: 'center',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
-            border: '1px solid #e5e7eb'
+            padding: '48px 24px'
           }}
         >
+          <div style={{ maxWidth: '480px', width: '100%', boxSizing: 'border-box', padding: '0 36px' }}>
           <div style={{ width: '72px', height: '72px', borderRadius: '22px', background: 'linear-gradient(135deg, #2d5a27 0%, #1e3d1a 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 10px 25px -5px rgba(45, 90, 39, 0.4)' }}>
             <Heart size={32} />
           </div>
@@ -113,6 +114,7 @@ export default function Wishlist() {
           >
             Continue Exploring Products
           </button>
+          </div>
         </div>
       </div>
     );

@@ -78,6 +78,11 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
   const customerPhone = order.customer_phone || '+92 300 1234567';
   const shippingAddress = order.shipping_address || 'Standard Delivery Address';
   const paymentMethod = order.payment_method || 'Cash on Delivery';
+  // Card orders are prepaid online; COD orders are collected on delivery.
+  const rawPayStatus = (order.payment_status || '').toLowerCase();
+  const isPaid = rawPayStatus === 'paid';
+  const paymentStatus = isPaid ? 'Paid' : (rawPayStatus === 'failed' ? 'Failed' : 'Pending');
+  const payStatusColor = isPaid ? '#16a34a' : (rawPayStatus === 'failed' ? '#dc2626' : '#d97706');
   const items = Array.isArray(order.items) && order.items.length > 0 ? order.items : [
     {
       name: order.product || order.product_name || 'Product Item',
@@ -281,6 +286,12 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
               <div className="payment-method-badge-box">
                 <CreditCard size={16} />
                 <span>{paymentMethod}</span>
+                <span
+                  className="pay-status-chip"
+                  style={{ background: payStatusColor + '1a', color: payStatusColor, borderColor: payStatusColor + '40' }}
+                >
+                  {paymentStatus}
+                </span>
               </div>
             </div>
           </div>

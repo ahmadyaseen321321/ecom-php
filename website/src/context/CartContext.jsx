@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { fetchProducts, fetchCategories, getImageUrl, fetchWishlistApi, addToWishlistApi, removeFromWishlistApi } from '../services/api';
+import { fetchProducts, fetchCategories, getImageUrl, fetchWishlistApi, addToWishlistApi, removeFromWishlistApi, confirmPaymentApi } from '../services/api';
 
 const CartContext = createContext();
 
@@ -241,6 +241,7 @@ export const CartProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setWishlist([]);
+    setCart([]); // empty the cart so the header badge doesn't linger after logout
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentPage('home');
@@ -268,6 +269,57 @@ export const CartProvider = ({ children }) => {
     }, 3000);
   };
 
+  // Handle the buyer's return from Stripe's hosted checkout (LIVE mode only).
+  // Stripe redirects to /?checkout=success&order_id=N&session_id=cs_...
+  // (or ?checkout=cancelled). We confirm the payment, then route onward.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    if (!checkout) return;
+
+    const orderId = params.get('order_id');
+    const sessionId = params.get('session_id');
+
+    // Strip the query params so a refresh doesn't re-run this.
+    window.history.replaceState({}, '', window.location.pathname);
+
+    let active = true;
+    async function finish() {
+      if (checkout === 'success' && orderId && sessionId) {
+        try {
+          const res = await confirmPaymentApi({
+            order_id: parseInt(orderId, 10),
+            session_id: sessionId,
+          });
+          if (!active) return;
+          if (res && (res.paid || res.already_paid)) {
+            setLastOrderData({
+              orderId: `${orderId}`,
+              total: res.total || 0,
+              firstItem: 'Your items',
+              itemCount: res.item_count || 1,
+              firstImage: null,
+            });
+            setCurrentPage('order-success');
+            showToast('💳 Payment successful! Order confirmed.');
+            return;
+          }
+        } catch (e) {
+          console.error('Payment confirmation failed:', e);
+        }
+        if (!active) return;
+        showToast('We could not confirm your payment. Please check your orders.');
+        setCurrentPage('orders');
+      } else if (checkout === 'cancelled') {
+        showToast('Payment cancelled. You can try again from checkout.');
+        setCurrentPage('cart');
+      }
+    }
+    finish();
+
+    return () => { active = false; };
+  }, [showToast]);
+
   const addToCart = (product, quantity = 1) => {
     if (!user) {
       setIsLoginRequiredOpen(true);
@@ -290,6 +342,9 @@ export const CartProvider = ({ children }) => {
     setCart((prev) => prev.filter((item) => item.id !== productId));
     showToast('Item removed from cart');
   };
+
+  // Empty the cart (used after a successful order / payment).
+  const clearCart = () => setCart([]);
 
   const updateQuantity = (productId, delta) => {
     setCart((prev) =>
@@ -376,6 +431,7 @@ export const CartProvider = ({ children }) => {
         updateUser,
         addToCart,
         removeFromCart,
+        clearCart,
         updateQuantity,
         toggleWishlist,
         totalCartCount,

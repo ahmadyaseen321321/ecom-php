@@ -97,12 +97,18 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
 
   return (
     <div className="seller-order-detail-page animate-fade-in">
+      {/* ── Top Bar: Back Button in white space ── */}
+      <div className="order-detail-top-nav">
+        <button type="button" className="order-detail-back-btn" onClick={onBack}>
+          <ArrowLeft size={16} />
+          <span>Back to Orders</span>
+        </button>
+      </div>
+
       {/* Top Breadcrumb & Action Bar */}
       <div className="detail-breadcrumb-bar">
         <div className="breadcrumb-links">
-          <span className="b-link" onClick={onBack} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <ArrowLeft size={16} /> Back to Orders
-          </span>
+          <span className="b-root">Orders</span>
           <span className="b-sep">&gt;</span>
           <span className="b-curr">{orderId}</span>
         </div>

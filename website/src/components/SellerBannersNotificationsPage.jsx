@@ -123,17 +123,55 @@ export default function SellerBannersNotificationsPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      showToast('Banner must be an image file');
+      showToast('Banner must be an image file (PNG, JPG, WEBP)');
+      e.target.value = '';
       return;
     }
     if (file.size > MAX_BANNER_BYTES) {
       showToast('Banner image must be smaller than 8MB');
+      e.target.value = '';
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      updateSlot(index, { file, preview: ev.target.result, clear_image: false });
+      const dataUrl = ev.target.result;
+      const img = new window.Image();
+      img.onload = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const ratio = w / Math.max(1, h);
+
+        // Strict 3:1 panoramic aspect ratio (tolerance: 2.6:1 to 3.4:1)
+        if (w < 1000 || h < 300) {
+          showToast(`Image resolution too small (${w}×${h}px). Banner requires at least 1000px width by 300px height.`, 'error');
+          e.target.value = '';
+          return;
+        }
+
+        if (ratio < 2.6 || ratio > 3.4) {
+          showToast(
+            `Invalid aspect ratio (${ratio.toFixed(2)}:1). Only 3:1 ratio banner images (e.g. 1200×400 or 1500×500) are accepted. Your image was ${w}×${h}px.`,
+            'error'
+          );
+          e.target.value = '';
+          return;
+        }
+
+        updateSlot(index, {
+          file,
+          preview: dataUrl,
+          clear_image: false,
+          dimensions: `${w}×${h}`,
+          aspectRatio: `${ratio.toFixed(2)}:1`,
+        });
+        showToast(`Image accepted (${w}×${h}px, ${ratio.toFixed(2)}:1 ratio)`);
+      };
+      img.onerror = () => {
+        showToast('Could not decode the selected image file', 'error');
+        e.target.value = '';
+      };
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   };
@@ -360,6 +398,9 @@ export default function SellerBannersNotificationsPage() {
                             )}
                           </div>
                         </div>
+                        <div className="banner-ratio-badge">
+                          ✓ 3:1 Ratio {banner.dimensions ? `(${banner.dimensions})` : 'Verified'}
+                        </div>
                         <button className="banner-remove-btn" onClick={() => handleRemoveBannerImage(idx)} title="Remove image">
                           <Trash2 size={14} />
                         </button>
@@ -367,12 +408,17 @@ export default function SellerBannersNotificationsPage() {
                     ) : (
                       <label className="banner-upload-zone" htmlFor={`banner-input-${idx}`}>
                         <Upload size={28} className="upload-icon" />
-                        <span className="upload-text">Click to upload</span>
-                        <span className="upload-hint">PNG, JPG up to 8MB · Recommended: 1200×400</span>
+                        <span className="upload-text">Click to upload banner</span>
+                        <span className="upload-hint">
+                          <strong>Strict 3:1 Ratio Required</strong> (e.g. 1200×400 or 1500×500)
+                        </span>
+                        <span className="upload-subhint">
+                          Min width: 1000px · Min height: 300px · Max 8MB
+                        </span>
                         <input
                           id={`banner-input-${idx}`}
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg,image/webp"
                           className="hidden-file-input"
                           onChange={(e) => handleBannerFileChange(idx, e)}
                         />

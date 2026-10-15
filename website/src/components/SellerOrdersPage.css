@@ -239,8 +239,8 @@
 /* --- Status Summary Cards (above the orders table) --------------- */
 .order-status-cards-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
   margin-bottom: 20px;
 }
 
@@ -311,6 +311,7 @@
 .order-status-summary-card.progress .oss-card-icon { background: #ffedd5; color: #ea580c; }
 .order-status-summary-card.shipped .oss-card-icon { background: #dbeafe; color: #2563eb; }
 .order-status-summary-card.delivered .oss-card-icon { background: #d1fae5; color: #059669; }
+.order-status-summary-card.cancelled .oss-card-icon { background: #fee2e2; color: #dc2626; }
 
 .oss-card-count {
   font-size: 1.7rem;

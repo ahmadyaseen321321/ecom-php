@@ -10,6 +10,7 @@ import SellerShipmentPage from './SellerShipmentPage';
 import SellerSettingsPage from './SellerSettingsPage';
 import SellerBannersNotificationsPage from './SellerBannersNotificationsPage';
 import SellerProductFormPage from './SellerProductFormPage';
+import SellerCategoriesPage from './SellerCategoriesPage';
 import {
   fetchSellerStatsApi,
   fetchSellerOrdersApi,
@@ -57,6 +58,7 @@ import {
   DollarSign,
   Lock,
   Grid,
+  Layers,
   Lightbulb,
   X,
   Image,
@@ -778,6 +780,7 @@ export default function SellerDashboard() {
   const sidebarNavItems = [
     { id: 'overview', label: 'Overview', icon: Grid },
     { id: 'products', label: 'Products', icon: Package },
+    { id: 'categories', label: 'Categories', icon: Layers },
     { id: 'messages', label: 'messages', icon: MessageSquare },
     { id: 'orders', label: 'Orders', icon: ShoppingBag },
     { id: 'shipment', label: 'Shipment', icon: Truck },
@@ -792,7 +795,7 @@ export default function SellerDashboard() {
     setEditingProduct(null);
     setSelectedSellerOrder(null);
     setAnalyticsMetric(null);
-    if (['overview', 'products', 'orders', 'reviews', 'messages', 'shipment', 'settings', 'banners', 'profile'].includes(id)) {
+    if (['overview', 'products', 'categories', 'orders', 'reviews', 'messages', 'shipment', 'settings', 'banners', 'profile'].includes(id)) {
       setActiveTab(id);
     } else {
       showToast(`${id} screen coming soon!`);
@@ -1872,6 +1875,11 @@ export default function SellerDashboard() {
           {/* Profile Setup (opened from the topbar account menu) */}
           {activeTab === 'profile' && (
             <SellerProfilePage onBack={() => setActiveTab('overview')} />
+          )}
+
+          {/* Categories Tab */}
+          {activeTab === 'categories' && (
+            <SellerCategoriesPage />
           )}
 
           {/* Banner & Notifications Tab */}

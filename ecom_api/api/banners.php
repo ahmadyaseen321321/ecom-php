@@ -133,6 +133,30 @@ if ($method == 'POST') {
             exit();
         }
 
+        // Validate aspect ratio and dimensions for wide banner (3:1 ratio required, e.g. 1200x400 or 1500x500)
+        $imgInfo = @getimagesize($_FILES['image']['tmp_name']);
+        if (!$imgInfo) {
+            http_response_code(400);
+            echo json_encode(["status" => "error", "message" => "Invalid image file uploaded"]);
+            exit();
+        }
+        $imgW = (int)$imgInfo[0];
+        $imgH = (int)$imgInfo[1];
+        if ($imgW < 900 || $imgH < 250) {
+            http_response_code(400);
+            echo json_encode(["status" => "error", "message" => "Banner image resolution too low ({$imgW}x{$imgH}). Minimum required is 1000px wide by 300px tall."]);
+            exit();
+        }
+        $imgRatio = $imgW / max(1, $imgH);
+        if ($imgRatio < 2.5 || $imgRatio > 3.5) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Invalid image aspect ratio (" . round($imgRatio, 2) . ":1). Banner requires approximately 3:1 panoramic ratio (e.g. 1200x400 or 1500x500). Current: {$imgW}x{$imgH}."
+            ]);
+            exit();
+        }
+
         $uploadDir = '../uploads/banners/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0777, true);

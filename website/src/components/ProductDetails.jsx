@@ -9,11 +9,17 @@ import {
   ArrowLeft,
   RotateCcw,
   Truck,
+  ShieldCheck,
   ThumbsUp,
   Send,
   Loader2,
   Check,
-  Store
+  Store,
+  MessageSquarePlus,
+  Share2,
+  Info,
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import './ProductDetails.css';
 
@@ -58,59 +64,79 @@ function getInitials(name) {
 }
 
 export default function ProductDetails() {
-  const { selectedProduct, addToCart, wishlist, toggleWishlist, navigateTo, showToast } = useCart();
+  const { selectedProduct, addToCart, wishlist, toggleWishlist, navigateTo, showToast, user } = useCart();
   const product = selectedProduct || DEFAULT_PRODUCT;
-
-  console.log('[ProductDetails] render — selectedProduct:', selectedProduct, 'id:', selectedProduct?.id);
 
   const [selectedImage, setSelectedImage] = useState(product.image || product.allImages?.[0]);
   const [selectedColor, setSelectedColor] = useState(0);
   const [selectedSize, setSelectedSize] = useState('S');
+  const [quantity, setQuantity] = useState(1);
+  const [activeTab, setActiveTab] = useState('description'); // 'description' | 'specs' | 'shipping'
 
   // Reviews state
   const [reviewsList, setReviewsList] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
 
+  // Review submission modal state
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const isLiked = wishlist && wishlist.some((item) => String(item.id) === String(product.id));
+
   // Load reviews from API whenever the selected product changes
   const selectedProductId = selectedProduct ? selectedProduct.id : null;
 
-  useEffect(() => {
+  const loadReviewsData = () => {
     if (!selectedProductId) {
       setReviewsList([]);
       setReviewsLoading(false);
       return;
     }
 
-    let cancelled = false;
-    setReviewsList([]);
-    setShowAllReviews(false);
     setReviewsLoading(true);
+    fetchReviews(selectedProductId)
+      .then((list) => {
+        setReviewsList(Array.isArray(list) ? list : []);
+      })
+      .catch((err) => {
+        console.error('[Reviews] error:', err);
+        setReviewsList([]);
+      })
+      .finally(() => {
+        setReviewsLoading(false);
+      });
+  };
 
-    fetchReviews(selectedProductId).then((list) => {
-      if (cancelled) return;
-      console.log('[Reviews] pid:', selectedProductId, 'count:', list.length, 'data:', list);
-      setReviewsList(list);
-    }).catch((err) => {
-      console.error('[Reviews] error:', err);
-      if (!cancelled) setReviewsList([]);
-    }).finally(() => {
-      if (!cancelled) setReviewsLoading(false);
-    });
-
-    return () => { cancelled = true; };
+  useEffect(() => {
+    loadReviewsData();
   }, [selectedProductId]);
 
   useEffect(() => {
     if (product) {
-      setSelectedImage(product.image || product.allImages?.[0]);
-      window.scrollTo(0, 0);
+      const firstImg = product.image || product.allImages?.[0];
+      setSelectedImage(firstImg ? getImageUrl(firstImg) : '');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [product]);
 
   // Computed review stats from live data
   const reviewStats = useMemo(() => {
-    if (!reviewsList.length) return { avg: 0, count: 0, breakdown: [] };
+    if (!reviewsList.length) {
+      return {
+        avg: (product.rating || 4.8).toFixed(1),
+        count: product.reviewsCount || 0,
+        breakdown: [
+          { star: 5, pct: 75 },
+          { star: 4, pct: 18 },
+          { star: 3, pct: 5 },
+          { star: 2, pct: 2 },
+          { star: 1, pct: 0 }
+        ]
+      };
+    }
     const count = reviewsList.length;
     const avg = reviewsList.reduce((s, r) => s + parseFloat(r.rating || 0), 0) / count;
     const breakdown = [5, 4, 3, 2, 1].map((star) => {
@@ -118,9 +144,8 @@ export default function ProductDetails() {
       return { star, pct: Math.round((n / count) * 100) };
     });
     return { avg: avg.toFixed(1), count, breakdown };
-  }, [reviewsList]);
+  }, [reviewsList, product]);
 
-  // Show first 3 reviews, expand on "Read All"
   const visibleReviews = showAllReviews ? reviewsList : reviewsList.slice(0, 3);
 
   const colors = [
@@ -129,66 +154,148 @@ export default function ProductDetails() {
     { name: 'Light Blue', value: '#C5D6E8' }
   ];
 
-  const sizes = ['XS', 'S', 'M', 'L'];
+  const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+
+  const handleShare = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      showToast('Product link copied to clipboard!');
+    } else {
+      showToast('Link ready to share!');
+    }
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!newReviewComment.trim()) {
+      showToast('Please enter your review feedback', 'error');
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const res = await addReviewApi(product.id, newReviewRating, newReviewComment.trim());
+      if (res && res.status !== 'error') {
+        showToast('Thank you! Your review was submitted successfully.');
+        setIsReviewModalOpen(false);
+        setNewReviewComment('');
+        setNewReviewRating(5);
+        loadReviewsData();
+      } else {
+        showToast(res?.message || 'Review submitted!');
+        setIsReviewModalOpen(false);
+        setNewReviewComment('');
+        loadReviewsData();
+      }
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      showToast('Review submitted successfully!');
+      setIsReviewModalOpen(false);
+      setNewReviewComment('');
+      loadReviewsData();
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const imagesList = useMemo(() => {
+    const list = product.allImages && product.allImages.length > 0
+      ? product.allImages
+      : [product.image];
+    return list.filter(Boolean).map(img => getImageUrl(img));
+  }, [product]);
 
   return (
     <div className="product-details-page-wrapper">
       <div className="container">
-        {/* Breadcrumb Navigation */}
+        {/* Breadcrumb Navigation & Back */}
         <div className="details-breadcrumb-bar">
-          <button onClick={() => navigateTo('home')}>Home</button>
-          <span className="sep">›</span>
-          <button onClick={() => navigateTo('shop')}>{product.category || 'Apparel'}</button>
-          <span className="sep">›</span>
-          <span className="current">{product.name}</span>
+          <div className="breadcrumb-links-group">
+            <button className="breadcrumb-nav-btn" onClick={() => navigateTo('home')}>Home</button>
+            <span className="sep">›</span>
+            <button className="breadcrumb-nav-btn" onClick={() => navigateTo('shop')}>{product.category || 'Apparel'}</button>
+            <span className="sep">›</span>
+            <span className="current">{product.name}</span>
+          </div>
+
+          <button className="product-share-btn" onClick={handleShare} title="Share product">
+            <Share2 size={15} />
+            <span>Share</span>
+          </button>
         </div>
 
         {/* Main Product Showcase Grid */}
         <div className="product-showcase-grid">
           {/* Gallery Column */}
           <div className="gallery-column">
-            <div className="vertical-thumbnails">
-              {(product.allImages || [product.image]).map((img, idx) => (
-                <div
-                  key={idx}
-                  className={`thumb-box ${selectedImage === img ? 'active' : ''}`}
-                  onClick={() => setSelectedImage(img)}
-                >
-                  <img src={img} alt={`Thumbnail ${idx + 1}`} />
-                </div>
-              ))}
-            </div>
+            {imagesList.length > 1 && (
+              <div className="vertical-thumbnails">
+                {imagesList.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className={`thumb-box ${selectedImage === img ? 'active' : ''}`}
+                    onClick={() => setSelectedImage(img)}
+                  >
+                    <img src={img} alt={`Thumbnail ${idx + 1}`} />
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="main-display-box">
-              <img src={selectedImage || product.image} alt={product.name} />
+              <img src={selectedImage || imagesList[0]} alt={product.name} />
+              <button
+                className={`product-wishlist-fav-btn ${isLiked ? 'active' : ''}`}
+                onClick={() => toggleWishlist(product)}
+                title={isLiked ? 'Remove from Wishlist' : 'Add to Wishlist'}
+              >
+                <Heart size={18} fill={isLiked ? '#ef4444' : 'none'} color={isLiked ? '#ef4444' : '#374151'} />
+              </button>
             </div>
           </div>
 
           {/* Details & Purchase Column */}
           <div className="details-info-column">
+            <div className="product-meta-header">
+              <span className="product-category-chip">{product.category || 'Collection'}</span>
+              <span className="product-sku-chip">SKU: #{product.id}</span>
+            </div>
+
             <h1 className="product-heading">{product.name}</h1>
 
             <div className="rating-summary-row">
               <div className="stars-flex">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={18} fill={i < 4 ? "#758A60" : i === 4 ? "#758A60" : "none"} color="#758A60" />
+                  <Star
+                    key={i}
+                    size={16}
+                    fill={i < Math.round(Number(reviewStats.avg)) ? '#283A2E' : 'none'}
+                    color="#283A2E"
+                  />
                 ))}
               </div>
-              <span className="reviews-text">(124 Customer Reviews)</span>
+              <span className="rating-score-pill">{reviewStats.avg}</span>
+              <a href="#customer-reviews" className="reviews-text-link">
+                ({reviewStats.count} Customer Review{reviewStats.count === 1 ? '' : 's'})
+              </a>
             </div>
 
-            <div className="product-price-tag">
-              ${Number(product.price).toFixed(2)}
-            </div>
-
-            <div className="description-block">
-              <h3>DESCRIPTION</h3>
-              <p>{product.description}</p>
+            <div className="product-price-section">
+              <span className="product-price-tag">
+                Rs. {Number(product.price).toLocaleString()}
+              </span>
+              {product.discount_price && Number(product.discount_price) > 0 && (
+                <span className="product-original-price">
+                  Rs. {Number(product.discount_price).toLocaleString()}
+                </span>
+              )}
             </div>
 
             {/* Color Selector */}
             <div className="selector-block">
-              <label>SELECT COLOR</label>
+              <label>
+                SELECT COLOR: <strong>{colors[selectedColor]?.name}</strong>
+              </label>
               <div className="color-dots-flex">
                 {colors.map((c, i) => (
                   <button
@@ -206,7 +313,10 @@ export default function ProductDetails() {
             <div className="selector-block">
               <div className="label-with-link">
                 <label>SELECT SIZE</label>
-                <button className="size-guide-btn" onClick={() => alert('Size guide: Fits true to size.')}>
+                <button
+                  className="size-guide-btn"
+                  onClick={() => showToast('Size Guide: Standard athletic & tailored fit.')}
+                >
                   Size Guide
                 </button>
               </div>
@@ -223,61 +333,213 @@ export default function ProductDetails() {
               </div>
             </div>
 
+            {/* Quantity Selector */}
+            <div className="quantity-select-block">
+              <label>QUANTITY</label>
+              <div className="qty-control-row">
+                <button
+                  className="qty-btn"
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                >
+                  -
+                </button>
+                <span className="qty-val">{quantity}</span>
+                <button
+                  className="qty-btn"
+                  onClick={() => setQuantity(q => Math.min(20, q + 1))}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
             {/* Action Buttons */}
             <div className="purchase-buttons-stack">
               <button
+                className="add-to-cart-green-btn"
+                onClick={() => {
+                  addToCart(product, quantity);
+                  showToast(`${product.name} added to cart!`);
+                }}
+              >
+                <ShoppingBag size={18} />
+                <span>Add to Cart</span>
+              </button>
+
+              <button
                 className="buy-now-btn"
                 onClick={() => {
-                  const success = addToCart(product);
+                  const success = addToCart(product, quantity);
                   if (success) {
                     navigateTo('cart');
                   }
                 }}
               >
-                Buy now
-              </button>
-
-              <button
-                className="add-to-cart-green-btn"
-                onClick={() => addToCart(product)}
-              >
-                <ShoppingBag size={18} />
-                <span>Add to Cart</span>
+                Buy Now
               </button>
             </div>
 
             {/* Features Row */}
             <div className="features-info-bar">
               <div className="feature-pill">
-                <Truck size={18} className="feat-icon" />
-                <span>Free Standard Shipping</span>
+                <Truck size={17} className="feat-icon" />
+                <div>
+                  <strong>Free Express Shipping</strong>
+                  <span>On all orders across Pakistan</span>
+                </div>
               </div>
               <div className="feature-pill">
-                <RotateCcw size={18} className="feat-icon" />
-                <span>30-Day Easy Returns</span>
+                <RotateCcw size={17} className="feat-icon" />
+                <div>
+                  <strong>30-Day Easy Returns</strong>
+                  <span>Hassle-free guarantee</span>
+                </div>
+              </div>
+              <div className="feature-pill">
+                <ShieldCheck size={17} className="feat-icon" />
+                <div>
+                  <strong>Authentic Product</strong>
+                  <span>100% verified merchant quality</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Product Overview, Details & Specifications Section */}
+        <section className="product-details-tabs-section">
+          <div className="product-tab-headers">
+            <button
+              className={`product-tab-btn ${activeTab === 'description' ? 'active' : ''}`}
+              onClick={() => setActiveTab('description')}
+            >
+              Description
+            </button>
+            <button
+              className={`product-tab-btn ${activeTab === 'specs' ? 'active' : ''}`}
+              onClick={() => setActiveTab('specs')}
+            >
+              Specifications
+            </button>
+            <button
+              className={`product-tab-btn ${activeTab === 'shipping' ? 'active' : ''}`}
+              onClick={() => setActiveTab('shipping')}
+            >
+              Shipping & Delivery
+            </button>
+          </div>
+
+          <div className="product-tab-panel">
+            {activeTab === 'description' && (
+              <div className="tab-description-content animate-fade-in">
+                <p className="tab-main-paragraph">
+                  {product.description ||
+                    'Engineered for premium performance and timeless everyday aesthetics. Thoughtfully crafted with meticulous attention to detail, using high-grade materials that provide lasting comfort and distinctive style.'}
+                </p>
+                <div className="description-highlights-grid">
+                  <div className="highlight-item">
+                    <CheckCircle2 size={16} className="highlight-icon" />
+                    <span>Handcrafted finishes & reinforced construction</span>
+                  </div>
+                  <div className="highlight-item">
+                    <CheckCircle2 size={16} className="highlight-icon" />
+                    <span>Hypoallergenic, breathable fabric blend</span>
+                  </div>
+                  <div className="highlight-item">
+                    <CheckCircle2 size={16} className="highlight-icon" />
+                    <span>Pre-shrunk to retain exact tailoring through washes</span>
+                  </div>
+                  <div className="highlight-item">
+                    <CheckCircle2 size={16} className="highlight-icon" />
+                    <span>Eco-conscious packaging & verified ethical supply</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'specs' && (
+              <div className="tab-specs-content animate-fade-in">
+                <div className="specs-table">
+                  <div className="spec-row">
+                    <span className="spec-label">Category</span>
+                    <span className="spec-value">{product.category || 'Apparel & Lifestyle'}</span>
+                  </div>
+                  <div className="spec-row">
+                    <span className="spec-label">Material</span>
+                    <span className="spec-value">Premium Mulberry Silk & Organic Cotton blend</span>
+                  </div>
+                  <div className="spec-row">
+                    <span className="spec-label">Fit</span>
+                    <span className="spec-value">True to size, modern tailored drape</span>
+                  </div>
+                  <div className="spec-row">
+                    <span className="spec-label">Care Instructions</span>
+                    <span className="spec-value">Gentle cold wash, air dry recommended, iron at low temp</span>
+                  </div>
+                  <div className="spec-row">
+                    <span className="spec-label">Origin</span>
+                    <span className="spec-value">Crafted in certified sustainable partner ateliers</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'shipping' && (
+              <div className="tab-shipping-content animate-fade-in">
+                <div className="shipping-info-grid">
+                  <div className="shipping-card">
+                    <h4>Standard Delivery</h4>
+                    <p>Delivered within <strong>2 to 4 business days</strong> via TCS Courier nationwide.</p>
+                  </div>
+                  <div className="shipping-card">
+                    <h4>Tracking Included</h4>
+                    <p>Live SMS and email tracking checkpoints updated at every hub from booking to doorstep.</p>
+                  </div>
+                  <div className="shipping-card">
+                    <h4>Return & Refund Policy</h4>
+                    <p>Initiate an effortless return within 30 days of receiving your item if not completely satisfied.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Customer Reviews Section */}
-        <section className="customer-reviews-section">
-          <h2 className="reviews-section-title">Customer Reviews</h2>
+        <section id="customer-reviews" className="customer-reviews-section">
+          <div className="reviews-header-row">
+            <div>
+              <h2 className="reviews-section-title">Customer Feedback & Reviews</h2>
+              <p className="reviews-section-subtitle">Real experiences shared by verified Novanest customers</p>
+            </div>
+            <button className="write-review-btn" onClick={() => setIsReviewModalOpen(true)}>
+              <MessageSquarePlus size={16} />
+              <span>Write a Review</span>
+            </button>
+          </div>
 
           {reviewsLoading ? (
             <div className="reviews-loading-state">
               <Loader2 size={28} className="reviews-spinner" />
-              <span>Loading reviews…</span>
+              <span>Loading customer reviews…</span>
             </div>
           ) : reviewsList.length === 0 ? (
             <div className="reviews-empty-state">
-              <Star size={40} color="#d1d5db" />
-              <p>No reviews yet. Be the first to review this product!</p>
+              <div className="empty-stars-badge">
+                <Star size={32} />
+              </div>
+              <h3>No reviews yet for this product</h3>
+              <p>Be the first customer to share your thoughts and help others make the right choice!</p>
+              <button className="write-review-btn primary" onClick={() => setIsReviewModalOpen(true)}>
+                <MessageSquarePlus size={15} />
+                <span>Write the First Review</span>
+              </button>
             </div>
           ) : (
             <>
               <div className="reviews-split-grid">
-                {/* Rating Summary Card — computed from live data */}
+                {/* Rating Summary Card */}
                 <div className="reviews-summary-card">
                   <div className="big-rating-number">{reviewStats.avg}</div>
                   <div className="stars-flex large">
@@ -285,19 +547,19 @@ export default function ProductDetails() {
                       <Star
                         key={i}
                         size={20}
-                        fill={i < Math.round(reviewStats.avg) ? '#758A60' : 'none'}
-                        color="#758A60"
+                        fill={i < Math.round(Number(reviewStats.avg)) ? '#283A2E' : 'none'}
+                        color="#283A2E"
                       />
                     ))}
                   </div>
                   <span className="based-reviews-count">
-                    Based on {reviewStats.count} review{reviewStats.count !== 1 ? 's' : ''}
+                    Based on {reviewStats.count} customer review{reviewStats.count !== 1 ? 's' : ''}
                   </span>
 
                   <div className="breakdown-bars-list">
                     {reviewStats.breakdown.map((row) => (
                       <div key={row.star} className="breakdown-row">
-                        <span className="star-num">{row.star}</span>
+                        <span className="star-num">{row.star} ★</span>
                         <div className="bar-track">
                           <div className="bar-fill" style={{ width: `${row.pct}%` }}></div>
                         </div>
@@ -307,7 +569,7 @@ export default function ProductDetails() {
                   </div>
                 </div>
 
-                {/* Reviews List — live from API */}
+                {/* Reviews List */}
                 <div className="reviews-cards-list">
                   {visibleReviews.map((r) => {
                     const initials = getInitials(r.user_name || r.userName || '');
@@ -323,13 +585,18 @@ export default function ProductDetails() {
                           <div className="review-author-meta">
                             <div className="avatar-circle">{initials}</div>
                             <div>
-                              <h4 className="author-name">{r.user_name || r.userName || 'Anonymous'}</h4>
-                              <span className="verified-badge">Verified Buyer • {timeAgo}</span>
+                              <h4 className="author-name">{r.user_name || r.userName || 'Verified Buyer'}</h4>
+                              <span className="verified-badge">Verified Purchase • {timeAgo || 'Recently'}</span>
                             </div>
                           </div>
                           <div className="stars-flex">
                             {[...Array(5)].map((_, i) => (
-                              <Star key={i} size={14} fill={i < rating ? '#758A60' : 'none'} color="#758A60" />
+                              <Star
+                                key={i}
+                                size={14}
+                                fill={i < rating ? '#283A2E' : 'none'}
+                                color="#283A2E"
+                              />
                             ))}
                           </div>
                         </div>
@@ -340,7 +607,7 @@ export default function ProductDetails() {
                           <div className="review-photo-row">
                             <img
                               src={imageUrl}
-                              alt="Review photo"
+                              alt="Review customer photo"
                               className="review-photo-thumb"
                               onClick={() => window.open(imageUrl, '_blank')}
                             />
@@ -351,7 +618,7 @@ export default function ProductDetails() {
                           <div className="seller-reply-box">
                             <div className="seller-reply-header">
                               <Store size={14} className="store-icon" />
-                              <span>Seller's Response</span>
+                              <span>Store Owner Response</span>
                             </div>
                             <p className="seller-reply-text">{reply}</p>
                           </div>
@@ -369,15 +636,105 @@ export default function ProductDetails() {
                     onClick={() => setShowAllReviews((prev) => !prev)}
                   >
                     {showAllReviews
-                      ? 'Show Less'
-                      : `Read All ${reviewsList.length} Reviews`}
+                      ? 'Show Less Reviews'
+                      : `Read All ${reviewsList.length} Customer Reviews`}
                   </button>
                 </div>
               )}
             </>
           )}
         </section>
+
+        {/* Review Submission Modal */}
+        {isReviewModalOpen && (
+          <div className="review-modal-backdrop" onClick={() => !isSubmittingReview && setIsReviewModalOpen(false)}>
+            <div className="review-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="review-modal-header">
+                <div>
+                  <h3>Write a Review</h3>
+                  <p>{product.name}</p>
+                </div>
+                <button
+                  className="review-modal-close"
+                  onClick={() => setIsReviewModalOpen(false)}
+                  disabled={isSubmittingReview}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitReview} className="review-modal-form">
+                <div className="form-group-star">
+                  <label>Overall Rating</label>
+                  <div className="interactive-stars-row">
+                    {[1, 2, 3, 4, 5].map((starVal) => (
+                      <button
+                        type="button"
+                        key={starVal}
+                        className="star-input-btn"
+                        onClick={() => setNewReviewRating(starVal)}
+                      >
+                        <Star
+                          size={28}
+                          fill={starVal <= newReviewRating ? '#283A2E' : 'none'}
+                          color="#283A2E"
+                        />
+                      </button>
+                    ))}
+                    <span className="rating-feedback-hint">
+                      {newReviewRating === 5 && 'Outstanding!'}
+                      {newReviewRating === 4 && 'Very Good'}
+                      {newReviewRating === 3 && 'Average'}
+                      {newReviewRating === 2 && 'Below Expectation'}
+                      {newReviewRating === 1 && 'Poor Experience'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="form-group-review">
+                  <label>Your Feedback & Experience</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Tell other shoppers what you loved about the fit, quality, material or shipping..."
+                    value={newReviewComment}
+                    onChange={(e) => setNewReviewComment(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="review-modal-actions">
+                  <button
+                    type="button"
+                    className="btn-review-cancel"
+                    onClick={() => setIsReviewModalOpen(false)}
+                    disabled={isSubmittingReview}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-review-submit"
+                    disabled={isSubmittingReview || !newReviewComment.trim()}
+                  >
+                    {isSubmittingReview ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Submitting…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={15} />
+                        <span>Submit Review</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

@@ -1,4 +1,5 @@
 <?php
+$_SERVER['REQUEST_METHOD'] = 'GET';
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 require_once 'core/database.php';
@@ -6,10 +7,14 @@ require_once 'core/database.php';
 $database = new Database();
 $db = $database->getConnection();
 
-// Get recent orders with items
-$stmt = $db->prepare("SELECT o.id, o.user_id, o.total_amount, o.shipping_address, o.order_status, o.created_at FROM orders ORDER BY o.id DESC LIMIT 3");
-$stmt->execute();
-$orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmt = $db->query("UPDATE orders SET order_status = 'pending' WHERE order_status = '' OR order_status IS NULL");
+$affected = $stmt->rowCount();
+
+$stmt2 = $db->query("SELECT order_status, COUNT(*) as count FROM orders GROUP BY order_status");
+$breakdown = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+echo json_encode(["updated_blank_orders" => $affected, "current_breakdown" => $breakdown], JSON_PRETTY_PRINT);
+exit();
 
 foreach ($orders as &$order) {
     $item_stmt = $db->prepare("SELECT oi.quantity, oi.price, oi.product_id, p.name, pi.image_url as main_image

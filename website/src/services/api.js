@@ -140,6 +140,40 @@ export async function fetchCategories() {
   return apiFetch('/api/categories.php');
 }
 
+// POST /api/categories.php (multipart / JSON) — create or update category with picture upload
+export async function saveCategoryApi({ id, name, parent_id, icon, imageFile }) {
+  if (imageFile) {
+    const formData = new FormData();
+    if (id) formData.append('id', id);
+    formData.append('name', name);
+    if (parent_id) formData.append('parent_id', parent_id);
+    if (icon) formData.append('icon', icon);
+    formData.append('image', imageFile);
+    return apiFetch('/api/categories.php', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  return apiFetch('/api/categories.php', {
+    method: 'POST',
+    body: JSON.stringify({
+      id,
+      name,
+      parent_id,
+      icon,
+    }),
+  });
+}
+
+// DELETE /api/categories.php?id=X (optional force=1)
+export async function deleteCategoryApi(categoryId, force = false) {
+  const q = force ? '&force=1' : '';
+  return apiFetch(`/api/categories.php?id=${categoryId}${q}`, {
+    method: 'DELETE',
+  });
+}
+
 // GET /api/banners.php
 export async function fetchBanners() {
   return apiFetch('/api/banners.php');

@@ -10,6 +10,8 @@ import {
   PackageCheck,
   MapPin,
   BadgeIndianRupee,
+  Layers,
+  X,
 } from 'lucide-react';
 import {
   tcsFetchShipmentsApi,
@@ -44,6 +46,7 @@ export default function SellerShipmentPage() {
   const [trackLoading, setTrackLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'to_ship' | 'in_transit' | 'delivered' | 'cod_pending'
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -127,6 +130,13 @@ export default function SellerShipmentPage() {
     }
   };
 
+  const inTransitCount = data.shipments.filter(
+    (s) => !['delivered', 'cancelled', 'returned'].includes(s.order_status)
+  ).length;
+  const deliveredCount = data.shipments.filter((s) => s.order_status === 'delivered').length;
+  const codPendingCount = data.shipments.filter((s) => s.cod_paid_status === 'unpaid').length;
+  const totalAll = data.pending_orders.length + data.shipments.length;
+
   const q = searchQuery.trim().toLowerCase();
   const match = (o) =>
     !q ||
@@ -135,14 +145,31 @@ export default function SellerShipmentPage() {
     (o.items_summary || '').toLowerCase().includes(q) ||
     (o.tcs_cn || '').toLowerCase().includes(q);
 
-  const pending = data.pending_orders.filter(match);
-  const shipped = data.shipments.filter(match);
+  const showReadyToShip = statusFilter === 'all' || statusFilter === 'to_ship';
+  const pending = showReadyToShip ? data.pending_orders.filter(match) : [];
 
-  const inTransit = data.shipments.filter(
-    (s) => !['delivered', 'cancelled', 'returned'].includes(s.order_status)
-  ).length;
-  const deliveredCount = data.shipments.filter((s) => s.order_status === 'delivered').length;
-  const codPending = data.shipments.filter((s) => s.cod_paid_status === 'unpaid').length;
+  const showConsignments = statusFilter !== 'to_ship';
+  const shipped = showConsignments
+    ? data.shipments
+        .filter(match)
+        .filter((s) => {
+          if (statusFilter === 'all') return true;
+          if (statusFilter === 'in_transit') return !['delivered', 'cancelled', 'returned'].includes(s.order_status);
+          if (statusFilter === 'delivered') return s.order_status === 'delivered';
+          if (statusFilter === 'cod_pending') return s.cod_paid_status === 'unpaid';
+          return true;
+        })
+    : [];
+
+  const getFilterLabel = (filter) => {
+    switch (filter) {
+      case 'to_ship': return 'To Ship';
+      case 'in_transit': return 'In Transit';
+      case 'delivered': return 'Delivered';
+      case 'cod_pending': return 'COD Pending';
+      default: return 'All Shipments';
+    }
+  };
 
   if (loading) {
     return (
@@ -188,191 +215,275 @@ export default function SellerShipmentPage() {
         </div>
       </div>
 
-      {/* Count chips */}
-      <div className="shipment-stat-chips">
-        <div className="shipment-chip">
+      {/* Count chips / Filter tabs */}
+      <div className="shipment-stat-chips" role="tablist" aria-label="Shipment status filters">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === 'all'}
+          className={`shipment-chip ${statusFilter === 'all' ? 'active' : ''}`}
+          onClick={() => setStatusFilter('all')}
+          title="Show all orders & consignments"
+        >
+          <Layers size={15} />
+          <span className="chip-num">{totalAll}</span>
+          <span className="chip-label">All</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === 'to_ship'}
+          className={`shipment-chip ${statusFilter === 'to_ship' ? 'active' : ''}`}
+          onClick={() => setStatusFilter((prev) => (prev === 'to_ship' ? 'all' : 'to_ship'))}
+          title="Filter: Ready to ship (pending booking)"
+        >
           <PackageCheck size={15} />
           <span className="chip-num">{data.pending_orders.length}</span>
           <span className="chip-label">To Ship</span>
-        </div>
-        <div className="shipment-chip">
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === 'in_transit'}
+          className={`shipment-chip ${statusFilter === 'in_transit' ? 'active' : ''}`}
+          onClick={() => setStatusFilter((prev) => (prev === 'in_transit' ? 'all' : 'in_transit'))}
+          title="Filter: Shipments currently in transit"
+        >
           <Truck size={15} />
-          <span className="chip-num">{inTransit}</span>
+          <span className="chip-num">{inTransitCount}</span>
           <span className="chip-label">In Transit</span>
-        </div>
-        <div className="shipment-chip">
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === 'delivered'}
+          className={`shipment-chip ${statusFilter === 'delivered' ? 'active' : ''}`}
+          onClick={() => setStatusFilter((prev) => (prev === 'delivered' ? 'all' : 'delivered'))}
+          title="Filter: Successfully delivered consignments"
+        >
           <MapPin size={15} />
           <span className="chip-num">{deliveredCount}</span>
           <span className="chip-label">Delivered</span>
-        </div>
-        <div className="shipment-chip">
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === 'cod_pending'}
+          className={`shipment-chip ${statusFilter === 'cod_pending' ? 'active' : ''}`}
+          onClick={() => setStatusFilter((prev) => (prev === 'cod_pending' ? 'all' : 'cod_pending'))}
+          title="Filter: Consignments with pending Cash on Delivery"
+        >
           <BadgeIndianRupee size={15} />
-          <span className="chip-num">{codPending}</span>
+          <span className="chip-num">{codPendingCount}</span>
           <span className="chip-label">COD Pending</span>
-        </div>
+        </button>
       </div>
 
-      {/* Ready to ship */}
-      {pending.length > 0 && (
-        <>
-          <h2 className="shipment-section-title">Ready to Ship</h2>
-          <div className="shipment-cards-list">
-            {pending.map((ord) => (
-              <div key={ord.id} className="shipment-card">
-                <div className="shipment-card-info">
-                  <div className="shipment-card-top-row">
-                    <span className="order-id-label">ORDER #{ord.id}</span>
-                    <span className="shipment-status-badge pending">
-                      <span className="status-dot pending" /> Awaiting TCS Booking
-                    </span>
-                  </div>
-                  <h2 className="customer-name">{ord.customer_name || 'Customer'}</h2>
-                  <p className="customer-address">{ord.shipping_address}</p>
-                  <div className="carrier-weight-row">
-                    <div className="info-col">
-                      <span className="info-label">Items</span>
-                      <div className="info-value">
-                        <span>{ord.items_summary}</span>
-                      </div>
-                    </div>
-                    <div className="info-col">
-                      <span className="info-label">
-                        {ord.payment_method && /cod|cash/i.test(ord.payment_method) ? 'COD Amount' : 'Order Total'}
-                      </span>
-                      <div className="info-value">
-                        <span>{fmtMoney(ord.total_amount)}</span>
-                      </div>
-                    </div>
-                    <div className="info-col">
-                      <span className="info-label">Ordered</span>
-                      <div className="info-value">
-                        <span>{fmtDate(ord.created_at)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+      {/* Active filter notification banner if filter selected */}
+      {statusFilter !== 'all' && (
+        <div className="shipment-filter-notice">
+          <span>
+            Filtering by <strong>{getFilterLabel(statusFilter)}</strong> ({statusFilter === 'to_ship' ? pending.length : shipped.length} {((statusFilter === 'to_ship' ? pending.length : shipped.length) === 1 ? 'order' : 'orders')})
+          </span>
+          <button type="button" className="clear-filter-btn" onClick={() => setStatusFilter('all')}>
+            <X size={13} />
+            <span>Show All</span>
+          </button>
+        </div>
+      )}
 
-                <div className="shipment-card-right">
-                  <button
-                    className="ship-tcs-btn"
-                    onClick={() => handleShip(ord.id)}
-                    disabled={shippingId === ord.id}
-                  >
-                    {shippingId === ord.id ? (
-                      <>
-                        <Loader2 size={15} className="spin-icon" />
-                        <span>Booking…</span>
-                      </>
-                    ) : (
-                      <>
-                        <Truck size={15} />
-                        <span>Ship with TCS</span>
-                      </>
-                    )}
-                  </button>
-                  <button className="doc-action-btn" onClick={() => handleInvoice(ord.id)}>
-                    <FileText size={15} />
-                    <span>Invoice</span>
-                  </button>
+      {/* Ready to ship */}
+      {(statusFilter === 'to_ship' || (statusFilter === 'all' && pending.length > 0)) && (
+        <>
+          <h2 className="shipment-section-title">
+            Ready to Ship {statusFilter === 'to_ship' ? `(${pending.length})` : ''}
+          </h2>
+          {pending.length === 0 ? (
+            <div className="shipment-empty-state">
+              <PackageCheck size={28} />
+              <p>
+                {searchQuery
+                  ? `No orders awaiting shipment match "${searchQuery}".`
+                  : 'No orders awaiting shipment.'}
+              </p>
+            </div>
+          ) : (
+            <div className="shipment-cards-list">
+              {pending.map((ord) => (
+                <div key={ord.id} className="shipment-card">
+                  <div className="shipment-card-info">
+                    <div className="shipment-card-top-row">
+                      <span className="order-id-label">ORDER #{ord.id}</span>
+                      <span className="shipment-status-badge pending">
+                        <span className="status-dot pending" /> Awaiting TCS Booking
+                      </span>
+                    </div>
+                    <h2 className="customer-name">{ord.customer_name || 'Customer'}</h2>
+                    <p className="customer-address">{ord.shipping_address}</p>
+                    <div className="carrier-weight-row">
+                      <div className="info-col">
+                        <span className="info-label">Items</span>
+                        <div className="info-value">
+                          <span>{ord.items_summary}</span>
+                        </div>
+                      </div>
+                      <div className="info-col">
+                        <span className="info-label">
+                          {ord.payment_method && /cod|cash/i.test(ord.payment_method) ? 'COD Amount' : 'Order Total'}
+                        </span>
+                        <div className="info-value">
+                          <span>{fmtMoney(ord.total_amount)}</span>
+                        </div>
+                      </div>
+                      <div className="info-col">
+                        <span className="info-label">Ordered</span>
+                        <div className="info-value">
+                          <span>{fmtDate(ord.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="shipment-card-right">
+                    <button
+                      className="ship-tcs-btn"
+                      onClick={() => handleShip(ord.id)}
+                      disabled={shippingId === ord.id}
+                    >
+                      {shippingId === ord.id ? (
+                        <>
+                          <Loader2 size={15} className="spin-icon" />
+                          <span>Booking…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Truck size={15} />
+                          <span>Ship with TCS</span>
+                        </>
+                      )}
+                    </button>
+                    <button className="doc-action-btn" onClick={() => handleInvoice(ord.id)}>
+                      <FileText size={15} />
+                      <span>Invoice</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
       {/* Active shipments */}
-      <h2 className="shipment-section-title">Consignments</h2>
-      {shipped.length === 0 ? (
-        <div className="shipment-empty-state">
-          <Truck size={28} />
-          <p>No TCS consignments yet — book a parcel from <strong>Ready to Ship</strong> above.</p>
-        </div>
-      ) : (
-        <div className="shipment-cards-list">
-          {shipped.map((ord) => (
-            <React.Fragment key={ord.id}>
-              <div className={`shipment-card ${openTrackId === ord.id ? 'tracking-open' : ''}`}>
-                <div className="shipment-card-info">
-                  <div className="shipment-card-top-row">
-                    <span className="order-id-label">ORDER #{ord.id}</span>
-                    <span
-                      className={`shipment-status-badge ${
-                        ord.order_status === 'delivered' ? 'ready' : 'pending'
-                      }`}
-                    >
-                      <span className={`status-dot ${ord.order_status === 'delivered' ? 'ready' : 'pending'}`} />
-                      {ord.status_label || ord.tcs_status || 'Booked'}
-                    </span>
-                  </div>
-                  <div className="cn-row">
-                    <span className="cn-chip" title="TCS consignment number">
-                      CN: {ord.tcs_cn}
-                    </span>
-                    {ord.cod_paid_status && (
-                      <span className={`cod-chip ${ord.cod_paid_status}`}>
-                        COD {ord.cod_paid_status === 'paid' ? 'Collected' : 'Pending'}
-                      </span>
-                    )}
-                  </div>
-                  <h2 className="customer-name">{ord.customer_name || 'Customer'}</h2>
-                  <p className="customer-address">{ord.items_summary}</p>
-                  <div className="carrier-weight-row">
-                    <div className="info-col">
-                      <span className="info-label">Booked</span>
-                      <div className="info-value">
-                        <span>{fmtDate(ord.tcs_booked_at)}</span>
+      {showConsignments && (
+        <>
+          <h2 className="shipment-section-title">
+            {statusFilter === 'all'
+              ? 'Consignments'
+              : `Consignments · ${getFilterLabel(statusFilter)} (${shipped.length})`}
+          </h2>
+          {shipped.length === 0 ? (
+            <div className="shipment-empty-state">
+              <Truck size={28} />
+              <p>
+                {searchQuery
+                  ? `No consignments match "${searchQuery}".`
+                  : statusFilter === 'all'
+                  ? 'No TCS consignments yet — book a parcel from Ready to Ship above.'
+                  : `No consignments found with status "${getFilterLabel(statusFilter)}".`}
+              </p>
+            </div>
+          ) : (
+            <div className="shipment-cards-list">
+              {shipped.map((ord) => (
+                <React.Fragment key={ord.id}>
+                  <div className={`shipment-card ${openTrackId === ord.id ? 'tracking-open' : ''}`}>
+                    <div className="shipment-card-info">
+                      <div className="shipment-card-top-row">
+                        <span className="order-id-label">ORDER #{ord.id}</span>
+                        <span
+                          className={`shipment-status-badge ${
+                            ord.order_status === 'delivered' ? 'ready' : 'pending'
+                          }`}
+                        >
+                          <span className={`status-dot ${ord.order_status === 'delivered' ? 'ready' : 'pending'}`} />
+                          {ord.status_label || ord.tcs_status || 'Booked'}
+                        </span>
+                      </div>
+                      <div className="cn-row">
+                        <span className="cn-chip" title="TCS consignment number">
+                          CN: {ord.tcs_cn}
+                        </span>
+                        {ord.cod_paid_status && (
+                          <span className={`cod-chip ${ord.cod_paid_status}`}>
+                            COD {ord.cod_paid_status === 'paid' ? 'Collected' : 'Pending'}
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="customer-name">{ord.customer_name || 'Customer'}</h2>
+                      <p className="customer-address">{ord.items_summary}</p>
+                      <div className="carrier-weight-row">
+                        <div className="info-col">
+                          <span className="info-label">Booked</span>
+                          <div className="info-value">
+                            <span>{fmtDate(ord.tcs_booked_at)}</span>
+                          </div>
+                        </div>
+                        <div className="info-col">
+                          <span className="info-label">Total</span>
+                          <div className="info-value">
+                            <span>{fmtMoney(ord.total_amount)}</span>
+                          </div>
+                        </div>
+                        <div className="info-col">
+                          <span className="info-label">Last Update</span>
+                          <div className="info-value">
+                            <span>{fmtDate(ord.tcs_updated_at)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="info-col">
-                      <span className="info-label">Total</span>
-                      <div className="info-value">
-                        <span>{fmtMoney(ord.total_amount)}</span>
-                      </div>
-                    </div>
-                    <div className="info-col">
-                      <span className="info-label">Last Update</span>
-                      <div className="info-value">
-                        <span>{fmtDate(ord.tcs_updated_at)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="shipment-card-right">
-                  <button
-                    className={`doc-action-btn ${openTrackId === ord.id ? 'active' : ''}`}
-                    onClick={() => handleTrack(ord)}
-                  >
-                    <MapPin size={15} />
-                    <span>{openTrackId === ord.id ? 'Hide Tracking' : 'Track'}</span>
-                  </button>
-                  <button className="doc-action-btn" onClick={() => handleLabel(ord.id)}>
-                    <Printer size={15} />
-                    <span>Label</span>
-                  </button>
-                  <button className="doc-action-btn" onClick={() => handleInvoice(ord.id)}>
-                    <FileText size={15} />
-                    <span>Invoice</span>
-                  </button>
-                </div>
-              </div>
+                    <div className="shipment-card-right">
+                      <button
+                        className={`doc-action-btn ${openTrackId === ord.id ? 'active' : ''}`}
+                        onClick={() => handleTrack(ord)}
+                      >
+                        <MapPin size={15} />
+                        <span>{openTrackId === ord.id ? 'Hide Tracking' : 'Track'}</span>
+                      </button>
+                      <button className="doc-action-btn" onClick={() => handleLabel(ord.id)}>
+                        <Printer size={15} />
+                        <span>Label</span>
+                      </button>
+                      <button className="doc-action-btn" onClick={() => handleInvoice(ord.id)}>
+                        <FileText size={15} />
+                        <span>Invoice</span>
+                      </button>
+                    </div>
+                  </div>
 
-              {openTrackId === ord.id && (
-                <div className="shipment-track-panel">
-                  <TrackingTimeline
-                    tracking={trackData}
-                    loading={trackLoading}
-                    onRefresh={async () => {
-                      const t = await tcsTrackApi(ord.id);
-                      setTrackData(t);
-                    }}
-                  />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
+                  {openTrackId === ord.id && (
+                    <div className="shipment-track-panel">
+                      <TrackingTimeline
+                        tracking={trackData}
+                        loading={trackLoading}
+                        onRefresh={async () => {
+                          const t = await tcsTrackApi(ord.id);
+                          setTrackData(t);
+                        }}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

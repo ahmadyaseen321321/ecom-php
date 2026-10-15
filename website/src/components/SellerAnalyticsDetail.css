@@ -1,70 +1,159 @@
-/* SellerAnalyticsDetail.css — drill-down analytics pages for the KPI cards */
+/* SellerAnalyticsDetail.css — 3 distinct drill-down analytics screens for AOV, Orders, and Revenue */
 .ad-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* ─── Header ─────────────────────────────────────────────────────── */
+/* ─── Top Back Navigation Bar ────────────────────────────────────────── */
+.ad-top-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 2px;
+}
+
+/* ─── Header & Switcher Row ─────────────────────────────────────────── */
 .ad-header-row {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .ad-back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
+  gap: 8px;
+  padding: 10px 20px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  font-size: 0.85rem;
+  border-radius: 12px;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #374151;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .ad-back-btn:hover {
   background: #f9fafb;
   border-color: #283A2E;
+  color: #111827;
+  transform: translateX(-2px);
 }
 
 .ad-title-block {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   flex: 1;
-  min-width: 0;
+  min-width: 280px;
 }
 
 .ad-title-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   background: #283A2E;
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(40, 58, 46, 0.2);
+}
+
+.theme-orders .ad-title-icon {
+  background: #1e40af;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.25);
+}
+
+.theme-revenue .ad-title-icon {
+  background: #b45309;
+  box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);
+}
+
+.ad-tagline-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #283A2E;
+  margin-bottom: 2px;
+}
+
+.theme-orders .ad-tagline-badge {
+  color: #2563eb;
+}
+
+.theme-revenue .ad-tagline-badge {
+  color: #d97706;
 }
 
 .ad-title {
-  font-size: 1.3rem;
+  font-size: 1.45rem;
   font-weight: 800;
   color: #111827;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .ad-subtitle {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: #6b7280;
-  margin: 2px 0 0;
+  margin: 4px 0 0;
+}
+
+/* ─── Metric Switcher Tabs ─────────────────────────────────────────── */
+.ad-metric-switcher {
+  display: flex;
+  align-items: center;
+  background: #f1f5f2;
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  border: 1px solid #e2e8e4;
+}
+
+.ad-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.ad-switcher-btn:hover {
+  color: #111827;
+}
+
+.ad-switcher-btn.active {
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.ad-switcher-btn.active.aov-btn {
+  color: #283A2E;
+}
+
+.ad-switcher-btn.active.orders-btn {
+  color: #1d4ed8;
+}
+
+.ad-switcher-btn.active.revenue-btn {
+  color: #b45309;
 }
 
 .ad-period-pill {
@@ -72,122 +161,181 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #374151;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-/* ─── Loading / empty ────────────────────────────────────────────── */
+/* ─── Loading / Empty ──────────────────────────────────────────────── */
 .ad-loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 70px 20px;
+  gap: 12px;
+  padding: 80px 20px;
   background: #ffffff;
   border: 1px solid #edf2ee;
-  border-radius: 16px;
+  border-radius: 18px;
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 .ad-empty {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: #9ca3af;
   text-align: center;
-  padding: 28px 12px;
+  padding: 32px 16px;
   margin: 0;
 }
 
-/* ─── Summary strip ──────────────────────────────────────────────── */
+/* ─── KPI Summary Strip (5 Cards) ──────────────────────────────────── */
 .ad-summary-strip {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
+  gap: 16px;
 }
 
 .ad-summary-card {
   background: #ffffff;
-  border: 1px solid #edf2ee;
-  border-radius: 14px;
-  padding: 16px 18px;
+  border: 1px solid #eef2ef;
+  border-radius: 16px;
+  padding: 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.ad-summary-card:first-child {
-  background: #283A2E;
+.ad-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Hero primary cards */
+.ad-summary-card.hero-metric-card {
+  background: linear-gradient(135deg, #283A2E 0%, #1e2e24 100%);
   border-color: #283A2E;
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(40, 58, 46, 0.25);
 }
 
-.ad-summary-card:first-child .ad-summary-label,
-.ad-summary-card:first-child .ad-summary-hint {
-  color: rgba(255, 255, 255, 0.7);
+.ad-summary-card.hero-metric-card.blue-hero {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  border-color: #1e40af;
+  box-shadow: 0 6px 20px rgba(30, 64, 175, 0.25);
 }
 
-.ad-summary-card:first-child .ad-summary-value {
+.ad-summary-card.hero-metric-card.amber-hero {
+  background: linear-gradient(135deg, #b45309 0%, #78350f 100%);
+  border-color: #b45309;
+  box-shadow: 0 6px 20px rgba(180, 83, 9, 0.25);
+}
+
+.ad-summary-card.hero-metric-card .ad-summary-label,
+.ad-summary-card.hero-metric-card .ad-summary-hint {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ad-summary-card.hero-metric-card .ad-summary-value {
   color: #ffffff;
 }
 
 .ad-summary-label {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   color: #6b7280;
+  letter-spacing: 0.01em;
 }
 
 .ad-summary-value {
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   font-weight: 800;
   color: #111827;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .ad-summary-value-sm {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
+}
+
+.ad-mini-sub {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  font-weight: 600;
 }
 
 .ad-summary-hint {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: #9ca3af;
+  margin-top: 2px;
 }
 
-/* ─── Panels grid ────────────────────────────────────────────────── */
+/* ─── Panels Grid ──────────────────────────────────────────────────── */
 .ad-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 20px;
 }
 
 .ad-panel {
   background: #ffffff;
-  border: 1px solid #edf2ee;
-  border-radius: 16px;
-  padding: 20px;
+  border: 1px solid #eef2ef;
+  border-radius: 18px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
 }
 
 .ad-panel-wide {
   grid-column: 1 / -1;
 }
 
-.ad-panel-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 16px;
+.ad-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 12px;
 }
 
-/* ─── Bar chart ──────────────────────────────────────────────────── */
+.ad-panel-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+}
+
+.ad-panel-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.ad-panel-badge.blue-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ad-panel-badge.amber-badge {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+/* ─── Bar Chart ────────────────────────────────────────────────────── */
 .ad-bar-chart {
   display: flex;
   align-items: flex-end;
-  gap: 4px;
-  height: 190px;
-  padding: 8px 0 0;
+  gap: 5px;
+  height: 210px;
+  padding: 12px 0 4px;
 }
 
 .ad-bar-col {
@@ -202,14 +350,16 @@
 
 .ad-bar {
   width: 100%;
-  max-width: 34px;
-  background: #d9e0da;
-  border-radius: 5px 5px 0 0;
-  transition: background 0.15s ease;
+  max-width: 38px;
+  background: #d4ded7;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .ad-bar:hover {
-  background: #283A2E;
+  filter: brightness(0.85);
+  transform: scaleY(1.03);
 }
 
 .ad-bar-max {
@@ -217,25 +367,26 @@
 }
 
 .ad-bar-zero {
-  background: #eef1ee;
-  min-height: 2px;
+  background: #f3f4f6;
+  min-height: 3px;
 }
 
 .ad-bar-label {
-  font-size: 0.62rem;
+  font-size: 0.65rem;
+  font-weight: 600;
   color: #9ca3af;
-  margin-top: 6px;
+  margin-top: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 
-/* ─── Share bars (horizontal) ────────────────────────────────────── */
+/* ─── Share Bars (Horizontal) ──────────────────────────────────────── */
 .ad-share-bars {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .ad-share-row {
@@ -252,20 +403,20 @@
 }
 
 .ad-share-label {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 700;
   color: #374151;
 }
 
 .ad-share-value {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #6b7280;
   white-space: nowrap;
 }
 
 .ad-share-track {
-  height: 8px;
+  height: 9px;
   background: #f3f4f6;
   border-radius: 999px;
   overflow: hidden;
@@ -275,56 +426,76 @@
   height: 100%;
   background: #283A2E;
   border-radius: 999px;
-  transition: width 0.3s ease;
+  transition: width 0.4s ease;
 }
 
-/* ─── Top products list ──────────────────────────────────────────── */
+/* ─── Product Leaderboard ──────────────────────────────────────────── */
 .ad-product-list {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
 .ad-product-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 11px 0;
-  border-bottom: 1px solid #f3f4f6;
+  gap: 14px;
+  padding: 12px 14px;
+  background: #fbfcfb;
+  border: 1px solid #f1f4f2;
+  border-radius: 12px;
+  transition: all 0.2s ease;
 }
 
-.ad-product-row:last-child {
-  border-bottom: none;
+.ad-product-row:hover {
+  background: #f4f7f4;
+  border-color: #e2e8e4;
+}
+
+.ad-product-rank {
+  font-size: 0.82rem;
+  font-weight: 800;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .ad-product-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  flex: 1;
   min-width: 0;
 }
 
 .ad-product-name {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #111827;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ad-product-units {
-  font-size: 0.72rem;
-  color: #9ca3af;
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
 .ad-product-revenue {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 800;
-  color: #283A2E;
+  color: #b45309;
   white-space: nowrap;
+  font-family: inherit;
 }
 
-/* ─── Orders table ───────────────────────────────────────────────── */
+/* ─── Orders Table ─────────────────────────────────────────────────── */
 .ad-table-wrap {
   overflow-x: auto;
 }
@@ -332,24 +503,29 @@
 .ad-orders-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
 }
 
 .ad-orders-table th {
-  text-align: left;
-  font-size: 0.72rem;
+  padding: 12px 16px;
+  background: #f9fafb;
+  color: #6b7280;
   font-weight: 700;
-  color: #9ca3af;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 8px 12px;
-  border-bottom: 1px solid #f3f4f6;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .ad-orders-table td {
-  font-size: 0.84rem;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f3f4f6;
   color: #374151;
-  padding: 11px 12px;
-  border-bottom: 1px solid #f9fafb;
+}
+
+.ad-orders-table tr:hover td {
+  background: #fbfcfb;
 }
 
 .ad-cell-strong {
@@ -357,58 +533,74 @@
   color: #111827;
 }
 
+.ad-payment-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
 .ad-status-chip {
   display: inline-block;
-  padding: 4px 11px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.ad-status-chip.pending,
-.ad-status-chip.processing {
-  background: #fef3c7;
-  color: #b45309;
-}
-
-.ad-status-chip.confirmed {
-  background: #ffedd5;
-  color: #c2410c;
-}
-
-.ad-status-chip.shipped {
-  background: #dbeafe;
-  color: #1d4ed8;
+  text-transform: capitalize;
 }
 
 .ad-status-chip.delivered {
-  background: #d1fae5;
-  color: #047857;
+  background: #dcfce7;
+  color: #15803d;
 }
 
-.ad-status-chip.cancelled,
-.ad-status-chip.returned {
+.ad-status-chip.shipped {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.ad-status-chip.confirmed {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.ad-status-chip.pending {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.ad-status-chip.cancelled {
   background: #fee2e2;
   color: #b91c1c;
 }
 
-/* ─── Responsive ─────────────────────────────────────────────────── */
-@media (max-width: 1100px) {
+/* ─── Responsive Adjustments ───────────────────────────────────────── */
+@media (max-width: 1200px) {
   .ad-summary-strip {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .ad-summary-strip {
+    grid-template-columns: repeat(2, 1fr);
   }
   .ad-grid {
     grid-template-columns: 1fr;
   }
+  .ad-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 600px) {
   .ad-summary-strip {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .ad-header-row {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr;
   }
 }

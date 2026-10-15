@@ -14,7 +14,8 @@ import {
   MessageSquare,
   ShoppingBag,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import './SellerOrdersPage.css';
 
@@ -52,13 +53,12 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
   };
 
   const getNormalizedStatus = (status) => {
-    const s = String(status || '').toLowerCase();
+    const s = String(status || '').toLowerCase().trim();
     if (s.includes('deliver')) return { label: 'Delivered', type: 'delivered' };
     if (s.includes('ship')) return { label: 'Shipped', type: 'shipped' };
-    if (s.includes('ready') || s.includes('pend')) return { label: 'Ready to Ship', type: 'ready' };
     if (s.includes('progress') || s.includes('process') || s.includes('confirm')) return { label: 'In Progress', type: 'progress' };
     if (s.includes('cancel')) return { label: 'Cancelled', type: 'cancelled' };
-    return { label: status || 'Pending', type: 'ready' };
+    return { label: 'Pending Orders', type: 'pending' };
   };
 
   const filteredOrders = orders.filter((ord) => {
@@ -80,7 +80,14 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
 
   // Live counts per status group — drive the summary cards above the table
   const statusCounts = useMemo(() => {
-    const counts = { ALL: 0, 'Ready to Ship': 0, 'In Progress': 0, Shipped: 0, Delivered: 0 };
+    const counts = {
+      ALL: 0,
+      'Pending Orders': 0,
+      'In Progress': 0,
+      Shipped: 0,
+      Delivered: 0,
+      Cancelled: 0
+    };
     orders.forEach((ord) => {
       counts.ALL += 1;
       const norm = getNormalizedStatus(ord.status || ord.order_status);
@@ -93,10 +100,11 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
 
   const summaryCards = [
     { key: 'ALL', label: 'All Orders', icon: ShoppingBag, accent: 'all' },
-    { key: 'Ready to Ship', label: 'Pending Orders', icon: Clock, accent: 'pending' },
+    { key: 'Pending Orders', label: 'Pending Orders', icon: Clock, accent: 'pending' },
     { key: 'In Progress', label: 'In Progress', icon: Loader2, accent: 'progress' },
     { key: 'Shipped', label: 'Shipped', icon: Truck, accent: 'shipped' },
-    { key: 'Delivered', label: 'Delivered', icon: CheckCircle2, accent: 'delivered' }
+    { key: 'Delivered', label: 'Delivered', icon: CheckCircle2, accent: 'delivered' },
+    { key: 'Cancelled', label: 'Cancelled', icon: XCircle, accent: 'cancelled' }
   ];
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));

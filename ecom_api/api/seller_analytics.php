@@ -222,6 +222,55 @@ $topProducts = array_map(function ($r) {
     ];
 }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
+// Calculate additional metric-tailored stats
+$totalUnitsSold = 0;
+foreach ($orderTotals as $row) {
+    $totalUnitsSold += (int)$row['item_count'];
+}
+
+$summary['total_units_sold'] = $totalUnitsSold;
+$summary['avg_items_per_order'] = count($orderValues) > 0 ? round($totalUnitsSold / count($orderValues), 1) : 0;
+$summary['avg_daily_revenue'] = round(($summary['total_revenue'] ?? 0) / max(1, $days), 2);
+
+$fulfilledCount = ($statusCounts['delivered'] ?? 0) + ($statusCounts['shipped'] ?? 0);
+$summary['fulfilled_orders'] = $fulfilledCount;
+$summary['fulfillment_rate'] = count($orderValues) > 0 ? round(($fulfilledCount / count($orderValues)) * 100, 1) : 0;
+
+// Category breakdown for revenue analytics
+$catQuery = "SELECT COALESCE(c.name, 'Other') as label, 
+                    COALESCE(SUM(oi.quantity * oi.price), 0) as revenue,
+                    COUNT(DISTINCT o.id) as count
+             FROM orders o
+             JOIN order_items oi ON o.id = oi.order_id
+             JOIN products p ON oi.product_id = p.id
+             LEFT JOIN categories c ON p.category_id = c.id
+             WHERE p.seller_id = :seller_id
+               AND o.order_status NOT IN ('cancelled', 'returned')
+               AND o.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+             GROUP BY c.id, c.name
+             ORDER BY revenue DESC
+             LIMIT 6";
+$stmt = $db->prepare($catQuery);
+$stmt->bindParam(':seller_id', $sellerId);
+$stmt->bindParam(':days', $days, PDO::PARAM_INT);
+$stmt->execute();
+$categoryRevenue = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Recent orders list for orders analytics (sorted newest first)
+$recentOrdersQuery = "SELECT o.id, o.payment_method, o.order_status as status, o.created_at,
+                             ub.full_name as customer_name,
+                             SUM(oi.quantity * oi.price) as total,
+                             SUM(oi.quantity) as items
+                      " . $fromClause . "
+                      GROUP BY o.id, o.payment_method, o.order_status, o.created_at, ub.full_name
+                      ORDER BY o.created_at DESC
+                      LIMIT 10";
+$stmt = $db->prepare($recentOrdersQuery);
+$stmt->bindParam(':seller_id', $sellerId);
+$stmt->bindParam(':days', $days, PDO::PARAM_INT);
+$stmt->execute();
+$recentOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 echo json_encode([
     "status" => "success",
     "data" => [
@@ -237,9 +286,11 @@ echo json_encode([
             return ['label' => $k, 'count' => $v];
         }, array_keys($paymentCounts), array_values($paymentCounts)),
         "orders_by_status" => array_map(function ($k, $v) {
-            return ['label' => $k, 'count' => $v];
+            return ['label' => ucfirst($k), 'count' => $v];
         }, array_keys($statusCounts), array_values($statusCounts)),
         "top_orders" => $topOrders,
+        "recent_orders" => $recentOrders,
+        "category_revenue" => $categoryRevenue,
         "new_vs_returning" => ["new" => $newCount, "returning" => $returningCount],
         "top_products_revenue" => $topProducts
     ]

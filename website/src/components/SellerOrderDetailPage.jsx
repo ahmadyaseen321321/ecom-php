@@ -50,12 +50,12 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
   const handlePrintLabel = async () => {
     const cn = tracking?.tcs_cn || order.tcs_cn;
     if (!cn) {
-      showToast('Not booked with TCS yet — book shipment first', 'error');
+      showToast('Not booked with Leopards yet — book shipment first', 'error');
       return;
     }
     try {
       await openTcsLabelApi(numericId);
-      showToast('TCS label downloaded — open the PDF to print');
+      showToast('Leopards label downloaded — open the PDF to print');
     } catch (e) {
       showToast(e.message || 'Label failed', 'error');
     }
@@ -67,10 +67,10 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
     try {
       const res = await tcsShipApi(numericId);
       if (res?.tcs_cn) {
-        showToast(`Booked with TCS! CN: ${res.tcs_cn}`);
+        showToast(`Booked with Leopards! CN: ${res.tcs_cn}`);
         loadTracking();
       } else {
-        showToast(res?.message || 'TCS booking failed', 'error');
+        showToast(res?.message || 'Leopards booking failed', 'error');
       }
     } catch (e) {
       showToast(e.message || 'TCS booking error', 'error');
@@ -142,7 +142,7 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
           {!(tracking?.tcs_cn || order.tcs_cn) ? (
             <button className="btn-ship-tcs" onClick={handleShipWithTcs} disabled={shippingLoading}>
               <Truck size={16} />
-              <span>{shippingLoading ? 'Booking TCS...' : 'Ship with TCS'}</span>
+              <span>{shippingLoading ? 'Booking Leopards...' : 'Ship with Leopards'}</span>
             </button>
           ) : (
             <button className="btn-print-label" onClick={handlePrintLabel}>
@@ -270,17 +270,17 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
             </div>
           </div>
 
-          {/* TCS live tracking timeline */}
+          {/* Leopards live tracking timeline */}
           <div className="detail-card-panel order-track-panel">
             <div className="panel-header-icon">
               <Truck size={18} />
-              <h3>TCS Tracking</h3>
+              <h3>Leopards Tracking</h3>
             </div>
             <TrackingTimeline
               tracking={tracking}
               loading={trackLoading}
               onRefresh={loadTracking}
-              notShippedText="This order hasn't been booked with TCS yet — book it from the Shipments tab."
+              notShippedText="This order hasn't been booked with Leopards yet — book it from the Shipments tab."
             />
           </div>
         </div>

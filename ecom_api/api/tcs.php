@@ -20,12 +20,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(); }
 require_once '../core/database.php';
 require_once '../core/jwt_helper.php';
 require_once '../core/socket_helper.php';
+require_once '../core/leopards_client.php';
 require_once '../core/tcs_client.php';
 
 $database = new Database();
 $db = $database->getConnection();
 $jwt = new JWTHelper();
-$tcs = new TcsClient();
+$courier = new LeopardsClient();
+$tcs = $courier; // Powered by Leopards Courier
 
 $userId = $jwt->validateTokenAndGetUserId();
 $role = $jwt->getRole();
@@ -149,7 +151,7 @@ function refreshShipment($db, $tcs, array $order)
     $latest = $checkpoints[0] ?? null;
     $newOrderStatus = null;
     if ($latest) {
-        $mapped = TcsClient::mapStatus($latest['status_text'] ?? '', $latest['status_code'] ?? '');
+        $mapped = LeopardsClient::mapStatus($latest['status_text'] ?? '', $latest['status_code'] ?? '');
         $codPaid = $mapped['done'] && isCodPayment($order['payment_method']) ? 'paid' : ($order['cod_paid_status'] ?? null);
         $upd = $db->prepare("UPDATE orders SET tcs_status = :st, tcs_status_code = :code, tcs_updated_at = NOW()
                              " . ($codPaid ? ", cod_paid_status = :cod " : "") . " WHERE id = :id");
@@ -246,7 +248,7 @@ if ($action === 'shipments' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $shipped = $shippedStmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($shipped as &$sh) {
-        $mapped = TcsClient::mapStatus($sh['tcs_status'] ?? '', $sh['tcs_status_code'] ?? '');
+        $mapped = LeopardsClient::mapStatus($sh['tcs_status'] ?? '', $sh['tcs_status_code'] ?? '');
         $sh['status_label'] = $mapped['label'];
     }
     unset($sh);
@@ -320,7 +322,7 @@ if ($action === 'ship' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // first checkpoint: booked (use the DB clock so it matches tcs_booked_at)
     saveEvents($db, $orderId, $res['cn'], [[
-        'status_code' => 'BOOKED', 'status_text' => 'Shipment booked with TCS',
+        'status_code' => 'BOOKED', 'status_text' => 'Shipment booked with Leopards Courier',
         'location' => conf_city(), 'checkpoint_at' => $db->query('SELECT NOW()')->fetchColumn(),
     ]]);
 
@@ -341,7 +343,8 @@ if ($action === 'ship' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     echo json_encode([
         "status" => "success",
-        "message" => "Booked with TCS",
+        "message" => "Booked with Leopards Courier",
+        "courier" => "Leopards Courier",
         "data" => ["order_id" => $orderId, "tcs_cn" => $res['cn'], "mode" => $tcs->mode()]
     ]);
     exit();
@@ -437,7 +440,7 @@ if ($action === 'label' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         http_response_code(403); echo json_encode(["status" => "error", "message" => "Not your order"]); exit();
     }
     if (empty($order['tcs_cn'])) {
-        http_response_code(400); echo json_encode(["status" => "error", "message" => "Order has no TCS booking yet"]); exit();
+        http_response_code(400); echo json_encode(["status" => "error", "message" => "Order has no Leopards booking yet"]); exit();
     }
 
     $res = $tcs->getLabelPdf($order['tcs_cn'], [
@@ -453,13 +456,13 @@ if ($action === 'label' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     // cache the label on disk
-    $dir = '../uploads/tcs/labels';
+    $dir = '../uploads/lcs/labels';
     if (!is_dir($dir)) @mkdir($dir, 0777, true);
     $path = $dir . '/label_' . preg_replace('/[^A-Za-z0-9_-]/', '', $order['tcs_cn']) . '.pdf';
     @file_put_contents($path, $res['pdf']);
 
     header("Content-Type: application/pdf");
-    header("Content-Disposition: inline; filename=\"TCS_Label_" . $order['tcs_cn'] . ".pdf\"");
+    header("Content-Disposition: inline; filename=\"Leopards_Label_" . $order['tcs_cn'] . ".pdf\"");
     header("Content-Length: " . strlen($res['pdf']));
     echo $res['pdf'];
     exit();

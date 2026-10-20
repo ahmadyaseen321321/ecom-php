@@ -74,7 +74,7 @@ export default function TrackingTimeline({ tracking, loading, onRefresh, notShip
     return (
       <div className="ttl-empty">
         <Truck size={18} />
-        <span>{notShippedText || 'Not shipped yet — tracking appears once the seller books the parcel with TCS.'}</span>
+        <span>{notShippedText || 'Not shipped yet — tracking appears once the seller books the parcel with Leopards Courier.'}</span>
       </div>
     );
   }
@@ -85,13 +85,13 @@ export default function TrackingTimeline({ tracking, loading, onRefresh, notShip
       <div className="ttl-header">
         <div className="ttl-header-left">
           <span className="ttl-carrier">
-            <Package size={14} /> TCS Courier
+            <Package size={14} /> Leopards Courier
           </span>
-          <span className="ttl-cn" title="TCS consignment number (CN)">
+          <span className="ttl-cn" title="Leopards consignment number (CN)">
             {cn}
           </span>
           {isDemo && (
-            <span className="ttl-demo-badge" title="Demo mode — no live TCS credentials configured yet">
+            <span className="ttl-demo-badge" title="Demo mode — no live Leopards credentials configured yet">
               DEMO
             </span>
           )}
@@ -126,7 +126,7 @@ export default function TrackingTimeline({ tracking, loading, onRefresh, notShip
       <div className={`ttl-status-banner ${stage >= STAGES.length - 1 ? 'delivered' : ''}`}>
         <ShieldCheck size={15} />
         <div>
-          <strong>{tracking?.tcs_status || 'Booked with TCS'}</strong>
+          <strong>{tracking?.tcs_status || 'Booked with Leopards Courier'}</strong>
           {tracking?.cod_amount > 0 && (
             <span className="ttl-cod">
               COD Rs. {Number(tracking.cod_amount).toLocaleString()} —{' '}

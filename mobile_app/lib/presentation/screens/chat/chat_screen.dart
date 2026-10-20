@@ -423,10 +423,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _pickFile() async {
-    fp.FilePickerResult? result = await fp.FilePicker.pickFiles();
-    if (result != null && result.files.single.path != null) {
+    final file = await fp.FilePicker.pickFile();
+    if (file != null && file.path != null) {
       setState(() {
-        _selectedFiles.add(result.files.single.path!);
+        _selectedFiles.add(file.path!);
       });
     }
   }

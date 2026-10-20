@@ -137,8 +137,8 @@ $y += 44;
 // TCS shipping block — the CN the customer can track
 if (!empty($order['tcs_cn'])) {
     $pdf->rect(40, $y, $W - 80, 74, 0.96, 0.97, 0.96);
-    $pdf->text(52, $y + 20, 9, 'SHIPPING — TCS COURIER', true, 0.35, 0.42, 0.38);
-    $pdf->text(52, $y + 40, 14, 'TCS Tracking No: ' . $order['tcs_cn'], true, $GREEN_R, $GREEN_G, $GREEN_B);
+    $pdf->text(52, $y + 20, 9, 'SHIPPING — LEOPARDS COURIER', true, 0.35, 0.42, 0.38);
+    $pdf->text(52, $y + 40, 14, 'Leopards Tracking No: ' . $order['tcs_cn'], true, $GREEN_R, $GREEN_G, $GREEN_B);
     $statusText = $order['tcs_status'] ?? 'Booked';
     $codLine = (stripos((string)$order['payment_method'], 'cod') === 0 || stripos((string)$order['payment_method'], 'cash') !== false)
         ? '  |  COD: Rs. ' . number_format($total, 2) . ' (' . ucfirst($order['cod_paid_status'] ?? 'unpaid') . ')'

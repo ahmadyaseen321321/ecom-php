@@ -72,11 +72,11 @@ export default function SellerShipmentPage() {
     try {
       const res = await tcsShipApi(orderId);
       if (res?.tcs_cn) {
-        showToast(`Booked with TCS — CN: ${res.tcs_cn}`);
+        showToast(`Booked with Leopards — CN: ${res.tcs_cn}`);
         await load(true);
       } else {
         showToast('Booking failed — see console', 'error');
-        console.error('TCS ship failed:', res);
+        console.error('Leopards ship failed:', res);
       }
     } finally {
       setShippingId(null);
@@ -115,7 +115,7 @@ export default function SellerShipmentPage() {
   const handleLabel = async (orderId) => {
     try {
       await openTcsLabelApi(orderId);
-      showToast('TCS label downloaded — open the PDF to print');
+      showToast('Leopards label downloaded — open the PDF to print');
     } catch (e) {
       showToast(e.message || 'Label failed', 'error');
     }
@@ -176,7 +176,7 @@ export default function SellerShipmentPage() {
       <div className="seller-shipment-page animate-fade-in">
         <div className="shipment-loading-state">
           <Loader2 size={26} className="spin-icon" />
-          <span>Loading TCS shipments…</span>
+          <span>Loading Leopards shipments…</span>
         </div>
       </div>
     );
@@ -187,12 +187,12 @@ export default function SellerShipmentPage() {
       {/* Header */}
       <div className="shipment-header">
         <div>
-          <h1 className="page-title">TCS Shipments</h1>
+          <h1 className="page-title">Leopards Shipments</h1>
           <p className="page-subtitle">
             {data.mode === 'demo' ? (
               <span className="tcs-mode-badge demo">Demo Mode</span>
             ) : (
-              <span className="tcs-mode-badge live">Live TCS</span>
+              <span className="tcs-mode-badge live">Live Leopards</span>
             )}
             <span>
               {data.pending_orders.length} waiting to ship · {data.shipments.length} consignments
@@ -319,7 +319,7 @@ export default function SellerShipmentPage() {
                     <div className="shipment-card-top-row">
                       <span className="order-id-label">ORDER #{ord.id}</span>
                       <span className="shipment-status-badge pending">
-                        <span className="status-dot pending" /> Awaiting TCS Booking
+                        <span className="status-dot pending" /> Awaiting Leopards Booking
                       </span>
                     </div>
                     <h2 className="customer-name">{ord.customer_name || 'Customer'}</h2>
@@ -362,7 +362,7 @@ export default function SellerShipmentPage() {
                       ) : (
                         <>
                           <Truck size={15} />
-                          <span>Ship with TCS</span>
+                          <span>Ship with Leopards</span>
                         </>
                       )}
                     </button>
@@ -393,7 +393,7 @@ export default function SellerShipmentPage() {
                 {searchQuery
                   ? `No consignments match "${searchQuery}".`
                   : statusFilter === 'all'
-                  ? 'No TCS consignments yet — book a parcel from Ready to Ship above.'
+                  ? 'No Leopards consignments yet — book a parcel from Ready to Ship above.'
                   : `No consignments found with status "${getFilterLabel(statusFilter)}".`}
               </p>
             </div>
@@ -415,7 +415,7 @@ export default function SellerShipmentPage() {
                         </span>
                       </div>
                       <div className="cn-row">
-                        <span className="cn-chip" title="TCS consignment number">
+                        <span className="cn-chip" title="Leopards consignment number">
                           CN: {ord.tcs_cn}
                         </span>
                         {ord.cod_paid_status && (

@@ -749,7 +749,7 @@ export async function openTcsLabelApi(orderId) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `TCS_Label_Order_${orderId}.pdf`;
+  a.download = `Leopards_Label_Order_${orderId}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();

@@ -27,21 +27,26 @@ define('UPLOAD_DIR', __DIR__ . '/../uploads/');
 define('FCM_SERVER_KEY', 'AIzaSyDrRi3Qr1wtNBSWc8XzGVAfBH9RBMAGrYQ');
 
 // ================================
-// TCS Courier Integration
+// Leopards Courier (LCS) Integration
 // ================================
 // Credentials are read from environment variables first (Apache SetEnv or
-// system env), falling back to these constants. Leave them empty to run the
-// integration in DEMO mode: bookings return simulated CNs, tracking advances
-// through realistic checkpoints every 2 hours, and labels/invoices are
-// generated locally. Fill them in and the same code talks to real TCS.
-define('TCS_CLIENT_ID', 'a4d357ba-073c-4282-84b8-56b457969248');
-define('TCS_CLIENT_SECRET', ''); // Click "View Subscription" in TCS portal to copy your Secret/Key
-define('TCS_USERNAME', '');      // Your TCS portal login email/username
-define('TCS_PASSWORD', '');      // Your TCS portal login password
-define('TCS_ENVIRONMENT', 'sandbox');     // 'sandbox' = devconnect.tcscourier.com, 'production' = ociconnect.tcscourier.com
-define('TCS_SERVICE_CODE', 'OVERNIGHT');  // confirm the service code list with TCS
-define('TCS_COST_CENTER_CODE', '');       // pickup cost centre provided by TCS (leave empty or fill from TCS)
+// system env), falling back to these constants. Leave LCS_API_KEY empty to
+// run in DEMO mode: bookings return simulated Leopards CNs (e.g. LCS88413670),
+// tracking advances through realistic checkpoints every 2 hours, and official
+// Leopards labels are generated locally. Fill in live keys for real bookings.
+define('LCS_API_KEY', '');           // Your Leopards merchant API key
+define('LCS_API_PASSWORD', '');      // Your Leopards merchant API password
+define('LCS_ENVIRONMENT', 'sandbox');// 'sandbox' = merchantapistaging.leopardscourier.com, 'production' = merchantapi.leopardscourier.com
+define('LCS_ORIGIN_CITY_ID', 789);   // Origin city ID from getAllCities (e.g. 789 = Karachi)
+define('LCS_DEFAULT_DEST_CITY_ID', 790); // Default destination city ID (e.g. 790 = Lahore)
+define('LCS_SHIPPER_NAME', 'My Store');
+define('LCS_SHIPPER_EMAIL', 'info@mystore.com');
+define('LCS_SHIPPER_PHONE', '03001234567');
+define('LCS_SHIPPER_ADDRESS', 'Shop 1, Commercial Market, Karachi');
+
+// Legacy TCS constants (kept for fallback compatibility)
 define('TCS_DEFAULT_CITY', 'KARACHI');
+
 
 // ================================
 // Stripe Payment Gateway

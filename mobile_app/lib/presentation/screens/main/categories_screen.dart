@@ -241,7 +241,7 @@ class _CategoryTile extends StatelessWidget {
             border: Border.all(color: AppColors.border),
             image: DecorationImage(
               image: CachedNetworkImageProvider(
-                CategoryAppearanceHelper.imageUrl(category.name),
+                CategoryAppearanceHelper.imageUrl(category.name, category.icon),
               ),
               fit: BoxFit.cover,
             ),

@@ -89,9 +89,9 @@ export default function SeasonalArchive() {
                   <span className="product-category">{product.category}</span>
                   <h3 className="product-name">{product.name}</h3>
                   <div className="price-row">
-                    <span className="current-price">${product.price.toFixed(2)}</span>
+                    <span className="current-price">Rs. {Number(product.price).toLocaleString()}</span>
                     {product.originalPrice && (
-                      <span className="original-price">${product.originalPrice.toFixed(2)}</span>
+                      <span className="original-price">Rs. {Number(product.originalPrice).toLocaleString()}</span>
                     )}
                   </div>
                 </div>

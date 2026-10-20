@@ -68,46 +68,90 @@ if ($method === 'GET') {
         $seller = $sStmt->fetch(PDO::FETCH_ASSOC);
     }
     
-    // Fetch recent orders with customer names to build conversation list
+    // Fetch recent orders with customer names and group into 1 conversation per customer
     $ordersQuery = "SELECT 
                         o.id,
+                        o.user_id,
                         o.order_status,
                         o.total_amount,
                         o.created_at,
+                        o.shipping_address,
                         u.full_name as customer_name,
                         u.email as customer_email,
+                        u.phone as customer_phone,
                         (SELECT message FROM order_chats WHERE order_id = CONCAT('#ORD-', o.id) OR order_id = CAST(o.id AS CHAR) ORDER BY id DESC LIMIT 1) as last_message,
                         (SELECT created_at FROM order_chats WHERE order_id = CONCAT('#ORD-', o.id) OR order_id = CAST(o.id AS CHAR) ORDER BY id DESC LIMIT 1) as last_message_time,
                         (SELECT (SELECT image_url FROM product_images WHERE product_id = p.id LIMIT 1)
                          FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = o.id LIMIT 1) as product_image
                     FROM orders o
                     LEFT JOIN users u ON o.user_id = u.id
-                    ORDER BY o.created_at DESC
-                    LIMIT 20";
+                    ORDER BY o.created_at DESC";
                     
     $stmt = $db->query($ordersQuery);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $conversations = [];
+    $customerMap = [];
     foreach ($rows as $row) {
-        $customerName = $row['customer_name'] ?: 'Customer #' . $row['id'];
-        $initials = strtoupper(substr($customerName, 0, 2));
+        $userId = !empty($row['user_id']) ? (string)$row['user_id'] : '';
+        $customerEmail = !empty($row['customer_email']) ? strtolower(trim($row['customer_email'])) : '';
+        $customerName = trim($row['customer_name'] ?: ($customerEmail ?: 'Customer #' . $row['id']));
         
-        $conversations[] = [
+        $key = $userId ? 'user_' . $userId : ($customerEmail ? 'email_' . $customerEmail : 'name_' . strtolower($customerName));
+        
+        $orderData = [
             'id' => (string)$row['id'],
             'orderId' => '#ORD-' . $row['id'],
-            'name' => $customerName,
-            'avatarText' => $initials,
-            'avatarImg' => $row['product_image'],
-            'image' => $row['product_image'],
-            'online' => true,
-            'time' => $row['last_message_time'] ? date('h:i A', strtotime($row['last_message_time'])) : date('M j', strtotime($row['created_at'])),
-            'preview' => $row['last_message'] ?: 'Order placed: Total Rs. ' . number_format((float)$row['total_amount'], 2),
-            'unread' => false,
-            'status' => $row['order_status']
+            'order_id' => $row['id'],
+            'status' => $row['order_status'],
+            'total_amount' => (float)$row['total_amount'],
+            'total' => (float)$row['total_amount'],
+            'created_at' => $row['created_at'],
+            'date' => $row['created_at'],
+            'shipping_address' => $row['shipping_address'],
+            'customer_name' => $customerName,
+            'customer_email' => $customerEmail,
+            'customer_phone' => $row['customer_phone'] ?? '',
+            'product_image' => $row['product_image'],
+            'last_message' => $row['last_message'],
+            'last_message_time' => $row['last_message_time'],
         ];
+
+        if (!isset($customerMap[$key])) {
+            $initials = strtoupper(substr($customerName, 0, 2));
+            $customerMap[$key] = [
+                'id' => $key,
+                'userId' => $userId,
+                'name' => $customerName,
+                'email' => $customerEmail,
+                'phone' => $row['customer_phone'] ?? '',
+                'avatarText' => $initials,
+                'avatarImg' => $row['product_image'],
+                'image' => $row['product_image'],
+                'online' => true,
+                'orders' => [$orderData],
+                'latestOrder' => $orderData,
+                'orderId' => '#ORD-' . $row['id'],
+                'time' => $row['last_message_time'] ? date('h:i A', strtotime($row['last_message_time'])) : date('M j', strtotime($row['created_at'])),
+                'preview' => $row['last_message'] ?: 'Order placed: Total Rs. ' . number_format((float)$row['total_amount'], 2),
+                'unread' => false,
+                'status' => $row['order_status']
+            ];
+        } else {
+            $customerMap[$key]['orders'][] = $orderData;
+            $prevTime = strtotime($customerMap[$key]['latestOrder']['created_at'] ?? '1970-01-01');
+            $currTime = strtotime($row['created_at'] ?? '1970-01-01');
+            if ($currTime >= $prevTime) {
+                $customerMap[$key]['latestOrder'] = $orderData;
+                $customerMap[$key]['orderId'] = '#ORD-' . $row['id'];
+                $customerMap[$key]['time'] = $row['last_message_time'] ? date('h:i A', strtotime($row['last_message_time'])) : date('M j', strtotime($row['created_at']));
+                if (!empty($row['last_message'])) {
+                    $customerMap[$key]['preview'] = $row['last_message'];
+                }
+            }
+        }
     }
 
+    $conversations = array_values($customerMap);
     echo json_encode(['status' => 'success', 'conversations' => $conversations, 'data' => $conversations]);
     exit();
 }

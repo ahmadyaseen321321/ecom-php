@@ -1,13 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { fetchProducts, fetchCategories, getImageUrl, fetchWishlistApi, addToWishlistApi, removeFromWishlistApi, confirmPaymentApi } from '../services/api';
+import { fetchProducts, fetchCategories, getImageUrl, normalizeCategory, fetchWishlistApi, addToWishlistApi, removeFromWishlistApi, confirmPaymentApi } from '../services/api';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   // ─── Live data from API ───────────────────────────────────
   const [liveProducts, setLiveProducts] = useState([]);
-  const [liveCategories, setLiveCategories] = useState([]);
+  const [liveCategories, setLiveCategoriesState] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const setLiveCategories = (cats) => {
+    if (Array.isArray(cats)) {
+      setLiveCategoriesState(cats.map((c, idx) => normalizeCategory(c, idx)));
+    } else {
+      setLiveCategoriesState(cats);
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -47,13 +55,9 @@ export const CartProvider = ({ children }) => {
           setLiveProducts(normalized);
         }
 
-        if (categoriesData) {
-          const normalizedCats = categoriesData.map((c) => ({
-            id: String(c.id),
-            name: c.name,
-            image: c.image_url ? getImageUrl(c.image_url) : null,
-          }));
-          setLiveCategories(normalizedCats);
+        if (categoriesData && Array.isArray(categoriesData)) {
+          const normalizedCats = categoriesData.map((c, idx) => normalizeCategory(c, idx));
+          setLiveCategoriesState(normalizedCats);
         }
       } catch (err) {
         console.error('Failed to load data from API:', err);
@@ -393,6 +397,7 @@ export const CartProvider = ({ children }) => {
         // Live data
         liveProducts,
         liveCategories,
+        setLiveCategories,
         isLoading,
         // Cart state
         cart,

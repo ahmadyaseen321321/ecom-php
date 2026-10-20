@@ -947,7 +947,7 @@ export default function OrdersPage() {
                   <img src={getImageUrl(selectedProductToReview.image)} alt="" />
                   <div>
                     <h4>{selectedProductToReview.name}</h4>
-                    <span>${Number(selectedProductToReview.price).toFixed(2)}</span>
+                    <span>Rs. {Number(selectedProductToReview.price).toLocaleString()}</span>
                   </div>
                 </div>
               )}

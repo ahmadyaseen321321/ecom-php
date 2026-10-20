@@ -178,7 +178,7 @@ export default function Wishlist() {
                     >
                       {item.name}
                     </h3>
-                    <span className="product-price-val">${Number(item.price).toFixed(2)}</span>
+                    <span className="product-price-val">Rs. {Number(item.price).toLocaleString()}</span>
 
                     <button
                       className="add-to-cart-green-pill"

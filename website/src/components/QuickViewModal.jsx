@@ -55,9 +55,9 @@ export default function QuickViewModal() {
 
             {/* Price */}
             <div className="modal-price-row">
-              <span className="modal-current-price">${quickViewProduct.price.toFixed(2)}</span>
+              <span className="modal-current-price">Rs. {Number(quickViewProduct.price).toLocaleString()}</span>
               {quickViewProduct.originalPrice && (
-                <span className="modal-original-price">${quickViewProduct.originalPrice.toFixed(2)}</span>
+                <span className="modal-original-price">Rs. {Number(quickViewProduct.originalPrice).toLocaleString()}</span>
               )}
             </div>
 
@@ -96,7 +96,7 @@ export default function QuickViewModal() {
             <div className="modal-features">
               <div className="feature-item">
                 <Truck size={16} />
-                <span>Free Express Shipping over $100</span>
+                <span>Free Express Shipping over Rs. 3,000</span>
               </div>
               <div className="feature-item">
                 <RotateCcw size={16} />

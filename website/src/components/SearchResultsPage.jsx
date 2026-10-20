@@ -84,7 +84,136 @@ export default function SearchResultsPage() {
     return result;
   }, [allProducts, searchQuery, selectedCategory, sortBy]);
 
+  // Compute similar / related products matching keywords, related terms, or catalog highlights
+  const similarProducts = useMemo(() => {
+    if (!allProducts || allProducts.length === 0) return [];
+
+    const raw = (searchQuery || '').toLowerCase().trim();
+    // Extract clean word tokens (e.g., "dsan," -> ["dsan"])
+    const tokens = raw
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length > 1);
+
+    // Exclude products that are already in filteredProducts
+    const existingIds = new Set(filteredProducts.map((p) => String(p.id)));
+    const candidates = allProducts.filter((p) => !existingIds.has(String(p.id)));
+
+    if (tokens.length > 0) {
+      // Score candidates by how many tokens match name, category, or description
+      const scored = candidates.map((p) => {
+        const text = `${p.name} ${p.category} ${p.description || ''}`.toLowerCase();
+        let score = 0;
+        tokens.forEach((t) => {
+          if (text.includes(t)) {
+            score += 5;
+          } else if (t.length >= 3 && text.includes(t.slice(0, 3))) {
+            score += 2;
+          }
+        });
+        return { product: p, score };
+      });
+
+      const matched = scored
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.product);
+
+      if (matched.length > 0) {
+        return matched.slice(0, 8);
+      }
+    }
+
+    // Fallback if no direct keyword match: return top recommended / highly rated products
+    return candidates
+      .slice()
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 8);
+  }, [allProducts, filteredProducts, searchQuery]);
+
   const popularTags = ['Cotton', 'Serum', 'Leather', 'Mug', 'Vase', 'Candle', 'Care'];
+
+  // Helper to render product card
+  const renderProductCard = (product) => {
+    const isWishlisted = wishlist.includes(product.id);
+    return (
+      <div
+        key={product.id}
+        className="search-product-card animate-fade-in"
+        onClick={() => navigateTo('product-details', product)}
+        style={{ cursor: 'pointer' }}
+      >
+        <div className="product-image-container">
+          <img src={product.image} alt={product.name} className="product-img" />
+
+          {product.badge && (
+            <span className={`badge ${product.badgeType || 'green'}`}>
+              {product.badge}
+            </span>
+          )}
+
+          <div className="card-quick-actions">
+            <button
+              className={`action-circle ${isWishlisted ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWishlist(product.id);
+              }}
+              title="Wishlist"
+            >
+              <Heart size={16} fill={isWishlisted ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              className="action-circle"
+              onClick={(e) => {
+                e.stopPropagation();
+                setQuickViewProduct(product);
+              }}
+              title="Quick View"
+            >
+              <Eye size={16} />
+            </button>
+          </div>
+
+          <button
+            className="add-to-cart-bar-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              addToCart(product);
+            }}
+          >
+            <ShoppingBag size={16} /> Add to Cart
+          </button>
+        </div>
+
+        <div className="product-card-body">
+          <span className="product-category-tag">{product.category}</span>
+          <h3 className="product-card-title">{product.name}</h3>
+
+          <div className="product-rating-row">
+            <div className="stars">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  size={12}
+                  fill={i < Math.floor(product.rating || 5) ? '#D4AF37' : '#E2E8F0'}
+                  color={i < Math.floor(product.rating || 5) ? '#D4AF37' : '#E2E8F0'}
+                />
+              ))}
+            </div>
+            <span className="rating-num">{product.rating || 4.9}</span>
+          </div>
+
+          <div className="product-price-row">
+            <span className="current-price">Rs. {Number(product.price).toLocaleString()}</span>
+            {product.originalPrice && (
+              <span className="original-price">Rs. {Number(product.originalPrice).toLocaleString()}</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="search-page-container">
@@ -162,89 +291,10 @@ export default function SearchResultsPage() {
           </div>
         </div>
 
-        {/* Product Grid */}
+        {/* Product Grid or Full-Width Empty State */}
         {filteredProducts.length > 0 ? (
           <div className="search-products-grid">
-            {filteredProducts.map((product) => {
-              const isWishlisted = wishlist.includes(product.id);
-              return (
-                <div
-                  key={product.id}
-                  className="search-product-card animate-fade-in"
-                  onClick={() => navigateTo('product-details', product)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="product-image-container">
-                    <img src={product.image} alt={product.name} className="product-img" />
-
-                    {product.badge && (
-                      <span className={`badge ${product.badgeType || 'green'}`}>
-                        {product.badge}
-                      </span>
-                    )}
-
-                    <div className="card-quick-actions">
-                      <button
-                        className={`action-circle ${isWishlisted ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleWishlist(product.id);
-                        }}
-                        title="Wishlist"
-                      >
-                        <Heart size={16} fill={isWishlisted ? 'currentColor' : 'none'} />
-                      </button>
-                      <button
-                        className="action-circle"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setQuickViewProduct(product);
-                        }}
-                        title="Quick View"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    </div>
-
-                    <button
-                      className="add-to-cart-bar-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addToCart(product);
-                      }}
-                    >
-                      <ShoppingBag size={16} /> Add to Cart
-                    </button>
-                  </div>
-
-                  <div className="product-card-body">
-                    <span className="product-category-tag">{product.category}</span>
-                    <h3 className="product-card-title">{product.name}</h3>
-
-                    <div className="product-rating-row">
-                      <div className="stars">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            size={12}
-                            fill={i < Math.floor(product.rating || 5) ? '#D4AF37' : '#E2E8F0'}
-                            color={i < Math.floor(product.rating || 5) ? '#D4AF37' : '#E2E8F0'}
-                          />
-                        ))}
-                      </div>
-                      <span className="rating-num">{product.rating || 4.9}</span>
-                    </div>
-
-                    <div className="product-price-row">
-                      <span className="current-price">${product.price.toFixed(2)}</span>
-                      {product.originalPrice && (
-                        <span className="original-price">${product.originalPrice.toFixed(2)}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredProducts.map(renderProductCard)}
           </div>
         ) : (
           <div className="search-empty-state">
@@ -277,6 +327,29 @@ export default function SearchResultsPage() {
               <ArrowLeft size={16} /> Back to Shop
             </button>
           </div>
+        )}
+
+        {/* Similar Products Matching Related Words Section */}
+        {similarProducts.length > 0 && (
+          <section className="similar-products-section">
+            <div className="similar-section-header">
+              <span className="similar-eyebrow">
+                <Sparkles size={14} /> Recommended For You
+              </span>
+              <h2 className="similar-heading font-serif">
+                Similar Products Matching Related Words
+              </h2>
+              <p className="similar-subtitle">
+                {searchQuery
+                  ? `Related products and recommendations matching keywords for "${searchQuery}"`
+                  : 'Popular products and top picks from our catalog'}
+              </p>
+            </div>
+
+            <div className="search-products-grid">
+              {similarProducts.map(renderProductCard)}
+            </div>
+          </section>
         )}
       </div>
     </div>

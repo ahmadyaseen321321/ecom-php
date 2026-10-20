@@ -211,11 +211,11 @@ export default function CartPage() {
                     </div>
 
                     <div className="unit-price-cell">
-                      ${Number(item.price).toFixed(2)}
+                      Rs. {Number(item.price).toLocaleString()}
                     </div>
 
                     <div className="total-price-cell">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      Rs. {(Number(item.price) * item.quantity).toLocaleString()}
                     </div>
 
                     <div className="action-delete-cell">
@@ -267,7 +267,7 @@ export default function CartPage() {
                 <div className="summary-lines-stack">
                   <div className="summary-line">
                     <span>Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>Rs. {Number(subtotal).toLocaleString()}</span>
                   </div>
                   <div className="summary-line">
                     <span>Shipping</span>
@@ -275,7 +275,7 @@ export default function CartPage() {
                   </div>
                   <div className="summary-line">
                     <span>Estimated Tax</span>
-                    <span>$0.00</span>
+                    <span>Rs. 0</span>
                   </div>
                 </div>
 
@@ -284,7 +284,7 @@ export default function CartPage() {
                 {/* Total */}
                 <div className="summary-grand-total">
                   <span>Total</span>
-                  <span className="grand-amount">${subtotal.toFixed(2)}</span>
+                  <span className="grand-amount">Rs. {Number(subtotal).toLocaleString()}</span>
                 </div>
 
                 {/* Checkout CTA */}

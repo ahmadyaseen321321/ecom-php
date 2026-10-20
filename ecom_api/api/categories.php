@@ -25,6 +25,10 @@ if ($method === 'GET') {
     $stmt = $db->prepare($query);
     $stmt->execute();
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($categories as &$cat) {
+        $cat['image'] = $cat['icon'];
+        $cat['image_url'] = $cat['icon'];
+    }
 
     echo json_encode([
         "status" => "success",
@@ -133,6 +137,8 @@ if ($method === 'POST') {
                 "id" => $categoryId,
                 "name" => $name,
                 "icon" => $finalImageOrIcon,
+                "image" => $finalImageOrIcon,
+                "image_url" => $finalImageOrIcon,
                 "parent_id" => $parentId
             ]
         ]);
@@ -149,6 +155,8 @@ if ($method === 'POST') {
                     "id" => $newId,
                     "name" => $name,
                     "icon" => $finalImageOrIcon,
+                    "image" => $finalImageOrIcon,
+                    "image_url" => $finalImageOrIcon,
                     "parent_id" => $parentId
                 ]
             ]);

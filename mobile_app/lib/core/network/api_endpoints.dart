@@ -1,5 +1,9 @@
 class ApiEndpoints {
-  // static const String baseUrl = "http://192.168.100.203/ecom_api";
+  // Local PC Wi-Fi IP (for physical phone on same Wi-Fi):
+  // static const String baseUrl = "http://192.168.100.206/ecom_api";
+  // Android Emulator (mapped to local PC):
+  // static const String baseUrl = "http://10.0.2.2/ecom_api";
+  // Live Cloud Server:
   static const String baseUrl = "http://sansuielectronics.store/ecom_api";
 
   // Auth

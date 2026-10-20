@@ -56,7 +56,7 @@ export default function ProfileSettingsPage({ initialTab = 'profile' }) {
 
   // Settings State
   const [darkMode, setDarkMode] = useState(false);
-  const [currency, setCurrency] = useState('USD ($)');
+  const [currency, setCurrency] = useState('PKR (Rs.)');
   const [orderAlerts, setOrderAlerts] = useState(true);
   const [emailNewsletter, setEmailNewsletter] = useState(true);
   const [promoAlerts, setPromoAlerts] = useState(false);

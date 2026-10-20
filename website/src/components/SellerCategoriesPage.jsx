@@ -21,7 +21,8 @@ import {
   saveCategoryApi,
   deleteCategoryApi,
   getImageUrl,
-  getCategoryImage
+  getCategoryImage,
+  isCustomCategoryImageUrl
 } from '../services/api';
 import './SellerCategoriesPage.css';
 
@@ -84,7 +85,7 @@ export default function SellerCategoriesPage() {
     setSelectedParentId(cat.parent_id ? String(cat.parent_id) : '');
     setImageFile(null);
     const existingImg = cat.icon || cat.image || '';
-    setImagePreview(existingImg ? getImageUrl(existingImg) : '');
+    setImagePreview(existingImg && isCustomCategoryImageUrl(existingImg) ? getImageUrl(existingImg) : '');
     setIsModalOpen(true);
   };
 
@@ -256,8 +257,8 @@ export default function SellerCategoriesPage() {
       ) : (
         <div className="cat-grid">
           {filteredCategories.map((cat, idx) => {
-            const hasCustomImage = cat.icon && !['devices', 'checkroom', 'home', 'face', 'sports'].includes(cat.icon);
-            const imageSrc = hasCustomImage ? getImageUrl(cat.icon) : getCategoryImage(cat, idx);
+            const hasCustomImage = isCustomCategoryImageUrl(cat.icon || cat.image || cat.image_url);
+            const imageSrc = hasCustomImage ? getImageUrl(cat.icon || cat.image || cat.image_url) : getCategoryImage(cat, idx);
             const productCount = cat.product_count !== undefined ? Number(cat.product_count) : null;
 
             return (

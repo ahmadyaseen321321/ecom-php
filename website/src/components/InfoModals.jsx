@@ -30,7 +30,7 @@ export default function InfoModals() {
   const [darkMode, setDarkMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [promoAlerts, setPromoAlerts] = useState(false);
-  const [currency, setCurrency] = useState('USD ($)');
+  const [currency, setCurrency] = useState('PKR (Rs.)');
 
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
@@ -42,7 +42,7 @@ export default function InfoModals() {
   const faqItems = [
     {
       q: 'What is mystore’s shipping policy?',
-      a: 'We offer free express carbon-neutral shipping on all orders over $100. Standard delivery typically takes 3-5 business days depending on your location.'
+      a: 'We offer free express carbon-neutral shipping on all orders over Rs. 3,000. Standard delivery typically takes 3-5 business days depending on your location.'
     },
     {
       q: 'How do I request a return or exchange?',

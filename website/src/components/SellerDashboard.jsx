@@ -75,7 +75,8 @@ import {
   CreditCard,
   Bell,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  MapPin
 } from 'lucide-react';
 import './SellerDashboard.css';
 
@@ -139,9 +140,10 @@ export default function SellerDashboard() {
   // Settings Drawer State
   const [isSettingsDrawerOpen, setIsSettingsDrawerOpen] = useState(false);
 
-  // Chat & Messages State
+  // Chat & Messages State — 1 chatbox per customer with order selector
   const [conversations, setConversations] = useState([]);
   const [selectedConvId, setSelectedConvId] = useState(null);
+  const [selectedChatOrderId, setSelectedChatOrderId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInputText, setChatInputText] = useState('');
   const [isUploadingChatFile, setIsUploadingChatFile] = useState(false);
@@ -158,6 +160,9 @@ export default function SellerDashboard() {
       const n = String(v).replace(/[^0-9]/g, '');
       if (n) ids.add(n);
     };
+    if (selectedChatOrderId) {
+      add(selectedChatOrderId);
+    }
     const conv = conversations.find(c => String(c.id) === String(selId) || String(c.orderId) === String(selId));
     if (conv) {
       add(conv.orderId);
@@ -263,7 +268,7 @@ export default function SellerDashboard() {
     }
   };
 
-  // Sync conversations from seller orders — Grouped 1 chatbox per customer/user
+  // Sync conversations from seller orders — Strictly 1 chatbox per customer/user
   useEffect(() => {
     if (sellerOrders && sellerOrders.length > 0) {
       const customerMap = {};
@@ -289,6 +294,7 @@ export default function SellerDashboard() {
             userId,
             name: custName,
             email: custEmail,
+            phone: o.customer_phone || o.phone || '',
             avatarText: custName.substring(0, 2).toUpperCase(),
             online: true,
             orders: [o],
@@ -297,7 +303,10 @@ export default function SellerDashboard() {
             time: o.date || o.created_at ? new Date(o.date || o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent'
           };
         } else {
-          customerMap[custKey].orders.push(o);
+          // Avoid duplicate order entries
+          if (!customerMap[custKey].orders.some(existingO => String(existingO.id || existingO.order_id) === rawId)) {
+            customerMap[custKey].orders.push(o);
+          }
           const prevTime = new Date(customerMap[custKey].latestOrder.date || customerMap[custKey].latestOrder.created_at || 0).getTime();
           const currTime = new Date(o.date || o.created_at || 0).getTime();
           if (currTime >= prevTime) {
@@ -309,26 +318,38 @@ export default function SellerDashboard() {
       });
 
       const userConvs = Object.values(customerMap).map((c) => {
-        const orderCount = c.orders.length;
-        const latestTotal = Number(c.latestOrder.total || c.latestOrder.total_amount || 0).toLocaleString();
-        const latestItems = c.latestOrder.items && Array.isArray(c.latestOrder.items) && c.latestOrder.items.length > 0
-          ? c.latestOrder.items.map((i) => i.name || i.product_name || 'Item').join(', ')
-          : (c.latestOrder.product_name || c.latestOrder.product || 'Items');
+        // Sort orders newest first
+        const sortedOrders = [...c.orders].sort((a, b) => new Date(b.created_at || b.date || 0).getTime() - new Date(a.created_at || a.date || 0).getTime());
+        const orderCount = sortedOrders.length;
+        const latestOrder = sortedOrders[0] || c.latestOrder;
+        const latestTotal = Number(latestOrder.total || latestOrder.total_amount || 0).toLocaleString();
+        const rawLatestId = String(latestOrder.id || latestOrder.order_id);
+        const latestOrderId = rawLatestId.startsWith('#') ? rawLatestId : `#ORD-${rawLatestId}`;
+        const latestItems = latestOrder.items && Array.isArray(latestOrder.items) && latestOrder.items.length > 0
+          ? latestOrder.items.map((i) => i.name || i.product_name || 'Item').join(', ')
+          : (latestOrder.product_name || latestOrder.product || 'Items');
 
         return {
           ...c,
+          orders: sortedOrders,
+          latestOrder,
+          orderId: latestOrderId,
           preview: orderCount > 1 
-            ? `${orderCount} Orders • Latest ${c.orderId} (Rs. ${latestTotal})`
+            ? `${orderCount} Orders • Latest ${latestOrderId} (Rs. ${latestTotal})`
             : `${latestItems} • Rs. ${latestTotal}`,
-          status: c.latestOrder.status || 'Ready To Ship'
+          status: latestOrder.status || latestOrder.order_status || 'Ready To Ship'
         };
       });
 
       setConversations(userConvs);
 
-      if (!selectedConvId && userConvs.length > 0) {
-        setSelectedConvId(userConvs[0].id);
-        loadCustomerChatMessages(userConvs[0]);
+      if (userConvs.length > 0) {
+        if (!selectedConvId || !userConvs.some(c => c.id === selectedConvId)) {
+          setSelectedConvId(userConvs[0].id);
+          const firstOrd = userConvs[0].orders?.[0] || userConvs[0].latestOrder;
+          setSelectedChatOrderId(firstOrd ? String(firstOrd.id || firstOrd.order_id) : userConvs[0].orderId);
+          loadCustomerChatMessages(userConvs[0]);
+        }
       }
     }
   }, [sellerOrders]);
@@ -342,6 +363,8 @@ export default function SellerDashboard() {
         setConversations(list);
         if (!selectedConvId) {
           setSelectedConvId(list[0].id || list[0].orderId);
+          const firstOrd = list[0].orders?.[0] || list[0].latestOrder;
+          setSelectedChatOrderId(firstOrd ? String(firstOrd.id || firstOrd.order_id) : list[0].orderId);
           loadCustomerChatMessages(list[0]);
         }
       }
@@ -394,10 +417,13 @@ export default function SellerDashboard() {
   // Open Chat for specific Order (finds or focuses customer conversation)
   const handleOpenOrderChat = (ord) => {
     if (!ord) return;
+    const rawId = String(ord.id || ord.order_id || '');
     const custName = (ord.customer_name || ord.customerName || ord.customer || (ord.shipping_address ? (ord.shipping_address.name || ord.shipping_address.full_name) : 'Customer')).trim();
     const custEmail = (ord.customer_email || ord.user_email || ord.email || '').trim().toLowerCase();
     const userId = ord.user_id ? String(ord.user_id) : '';
     const custKey = userId ? `user_${userId}` : (custEmail ? `email_${custEmail}` : `name_${custName.toLowerCase()}`);
+
+    setSelectedChatOrderId(rawId);
 
     const existing = conversations.find(c => c.id === custKey || c.name.toLowerCase() === custName.toLowerCase());
     if (existing) {
@@ -406,7 +432,6 @@ export default function SellerDashboard() {
     } else {
       // Create the conversation entry right away so the socket room join,
       // message filtering and sending all know which order this chat belongs to
-      const rawId = String(ord.id || ord.order_id || '');
       const newConv = {
         id: custKey,
         userId,
@@ -450,7 +475,12 @@ export default function SellerDashboard() {
     if (!textToSend || !selectedConvId) return;
     
     const activeConv = conversations.find(c => String(c.id) === String(selectedConvId) || String(c.orderId) === String(selectedConvId));
-    const targetOrderId = activeConv?.orderId || (String(selectedConvId).startsWith('#') ? selectedConvId : `#ORD-${selectedConvId}`);
+    const activeOrderObj = (activeConv?.orders || []).find(o => String(o.id || o.order_id) === String(selectedChatOrderId) || String(o.orderId) === String(selectedChatOrderId)) 
+      || activeConv?.latestOrder 
+      || activeConv?.orders?.[0];
+    const targetOrderId = activeOrderObj 
+      ? (String(activeOrderObj.id || activeOrderObj.order_id).startsWith('#') ? (activeOrderObj.id || activeOrderObj.order_id) : `#ORD-${activeOrderObj.id || activeOrderObj.order_id}`)
+      : (activeConv?.orderId || (String(selectedConvId).startsWith('#') ? selectedConvId : `#ORD-${selectedConvId}`));
     // Always use clean numeric ID for socket room matching
     const cleanOrderId = String(targetOrderId).replace(/[^0-9]/g, '') || String(targetOrderId);
 
@@ -501,7 +531,12 @@ export default function SellerDashboard() {
     }
 
     const activeConv = conversations.find(c => String(c.id) === String(selectedConvId) || String(c.orderId) === String(selectedConvId));
-    const targetOrderId = activeConv?.orderId || (String(selectedConvId).startsWith('#') ? selectedConvId : `#ORD-${selectedConvId}`);
+    const activeOrderObj = (activeConv?.orders || []).find(o => String(o.id || o.order_id) === String(selectedChatOrderId) || String(o.orderId) === String(selectedChatOrderId)) 
+      || activeConv?.latestOrder 
+      || activeConv?.orders?.[0];
+    const targetOrderId = activeOrderObj 
+      ? (String(activeOrderObj.id || activeOrderObj.order_id).startsWith('#') ? (activeOrderObj.id || activeOrderObj.order_id) : `#ORD-${activeOrderObj.id || activeOrderObj.order_id}`)
+      : (activeConv?.orderId || (String(selectedConvId).startsWith('#') ? selectedConvId : `#ORD-${selectedConvId}`));
     const cleanOrderId = String(targetOrderId).replace(/[^0-9]/g, '') || String(targetOrderId);
 
     const clientId = `seller_${Date.now()}`;
@@ -1619,7 +1654,7 @@ export default function SellerDashboard() {
                       const isSelected = String(selectedConvId) === String(conv.id) || String(selectedConvId) === String(conv.orderId);
                       const orderCount = conv.orders ? conv.orders.length : 1;
                       const orderSubText = orderCount > 1 
-                        ? `${orderCount} Orders • Latest ${conv.orderId}` 
+                        ? `${orderCount} Orders` 
                         : (conv.orderId || 'Customer');
 
                       return (
@@ -1628,6 +1663,8 @@ export default function SellerDashboard() {
                           className={`conversation-item-card ${isSelected ? 'selected' : ''}`}
                           onClick={() => {
                             setSelectedConvId(conv.id);
+                            const firstOrd = conv.orders?.[0] || conv.latestOrder;
+                            setSelectedChatOrderId(firstOrd ? String(firstOrd.id || firstOrd.order_id) : conv.orderId);
                             loadCustomerChatMessages(conv);
                           }}
                           style={{ cursor: 'pointer' }}
@@ -1647,7 +1684,12 @@ export default function SellerDashboard() {
                               <h4 className="conv-name">{conv.name || 'Customer'}</h4>
                               <span className="conv-time">{conv.time || 'Recent'}</span>
                             </div>
-                            <span className="conv-order-id">{orderSubText}</span>
+                            <div className="conv-order-row">
+                              <span className="conv-order-id">{orderSubText}</span>
+                              {orderCount > 1 && (
+                                <span className="conv-order-count-badge">{orderCount}</span>
+                              )}
+                            </div>
                             <p className="conv-preview-text">{conv.preview || 'Click to view conversation'}</p>
                           </div>
                         </div>
@@ -1661,71 +1703,167 @@ export default function SellerDashboard() {
               <div className="messages-chat-panel">
                 {(() => {
                   const activeConv = conversations.find(c => String(c.id) === String(selectedConvId) || String(c.orderId) === String(selectedConvId)) || conversations[0];
-                  const activeOrderObj = activeConv?.latestOrder || activeConv?.rawOrder || (activeConv?.orders?.[0]) || sellerOrders.find(o => String(o.id) === String(activeConv?.id) || `#ORD-${o.id}` === activeConv?.orderId);
-                  const currentOrderId = activeOrderObj ? (String(activeOrderObj.id || activeOrderObj.order_id).startsWith('#') ? (activeOrderObj.id || activeOrderObj.order_id) : `#ORD-${activeOrderObj.id || activeOrderObj.order_id}`) : (activeConv?.orderId || '#ORD-1');
+                  const userOrders = activeConv?.orders || [];
+                  // Find the selected order from the conversation's orders using selectedChatOrderId
+                  const activeOrderObj = userOrders.find(o => String(o.id || o.order_id) === String(selectedChatOrderId))
+                    || activeConv?.latestOrder
+                    || userOrders[0]
+                    || sellerOrders.find(o => String(o.id) === String(activeConv?.id) || `#ORD-${o.id}` === activeConv?.orderId);
+                  const rawOrdId = String(activeOrderObj?.id || activeOrderObj?.order_id || '');
+                  const currentOrderId = rawOrdId.startsWith('#') ? rawOrdId : (rawOrdId ? `#ORD-${rawOrdId}` : (activeConv?.orderId || '#ORD-1'));
                   const currentName = activeConv?.name || (activeOrderObj?.customer_name || activeOrderObj?.customerName || 'Customer');
-                  const orderStatus = activeOrderObj?.status || 'Ready To Ship';
-                  const orderDateStr = activeOrderObj?.date || activeOrderObj?.created_at ? new Date(activeOrderObj?.date || activeOrderObj?.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (activeConv?.time || 'Recent');
+                  const orderStatus = activeOrderObj?.status || activeOrderObj?.order_status || 'Pending';
+                  const orderDateStr = (activeOrderObj?.date || activeOrderObj?.created_at) ? new Date(activeOrderObj?.date || activeOrderObj?.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (activeConv?.time || 'Recent');
+                  const orderTimeStr = (activeOrderObj?.date || activeOrderObj?.created_at) ? new Date(activeOrderObj?.date || activeOrderObj?.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
                   const orderTotalStr = Number(activeOrderObj?.total || activeOrderObj?.total_amount || 0).toLocaleString();
-                  const orderSummaryStr = activeOrderObj?.items && Array.isArray(activeOrderObj.items) && activeOrderObj.items.length > 0
-                    ? activeOrderObj.items.map(i => i.name || i.product_name).join(', ')
-                    : (activeOrderObj?.product_name || activeOrderObj?.product || '');
+                  const orderItems = activeOrderObj?.items && Array.isArray(activeOrderObj.items) ? activeOrderObj.items : [];
+                  const paymentMethod = activeOrderObj?.payment_method || activeOrderObj?.paymentMethod || 'COD';
+                  const paymentStatus = activeOrderObj?.payment_status || activeOrderObj?.paymentStatus || 'Unpaid';
+                  const shippingAddr = activeOrderObj?.shipping_address || activeOrderObj?.shippingAddress || null;
+                  const custPhone = activeConv?.phone || activeOrderObj?.customer_phone || activeOrderObj?.phone || '';
+                  const tcsTracking = activeOrderObj?.tcs_tracking_number || activeOrderObj?.tracking_number || '';
+                  const tcsStatus = activeOrderObj?.tcs_status || activeOrderObj?.tracking_status || '';
 
                   return (
                     <>
-                      {/* Top Order Details Banner */}
+                      {/* Order Selector Dropdown — shown when customer has multiple orders */}
+                      {userOrders.length > 1 && (
+                        <div className="chat-order-inquiry-bar">
+                          <span className="inquiry-bar-label">
+                            <Package size={14} />
+                            Inquiry About:
+                          </span>
+                          <div className="inquiry-dropdown-wrap">
+                            <select
+                              className="inquiry-order-dropdown"
+                              value={selectedChatOrderId || ''}
+                              onChange={(e) => setSelectedChatOrderId(e.target.value)}
+                            >
+                              {userOrders.map((ord) => {
+                                const ordRawId = String(ord.id || ord.order_id);
+                                const ordDisplayId = ordRawId.startsWith('#') ? ordRawId : `#ORD-${ordRawId}`;
+                                const ordTotal = Number(ord.total || ord.total_amount || 0).toLocaleString();
+                                const ordStatus = ord.status || ord.order_status || 'Pending';
+                                const ordDate = (ord.date || ord.created_at) ? new Date(ord.date || ord.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                                return (
+                                  <option key={ordRawId} value={ordRawId}>
+                                    {ordDisplayId} — Rs. {ordTotal} — {ordStatus}{ordDate ? ` — ${ordDate}` : ''}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <ChevronDown size={14} className="dropdown-chevron" />
+                          </div>
+                          <span className="inquiry-order-count">{userOrders.length} Orders</span>
+                        </div>
+                      )}
+
+                      {/* Top Order Details Banner — Full details of selected order */}
                       <div className="chat-order-top-banner">
-                        <div className="banner-order-meta">
-                          <div className="meta-badge-row">
+                        {/* Row 1: Order ID + Status + Payment */}
+                        <div className="banner-detail-row">
+                          <div className="banner-detail-left">
                             <span className="order-number-tag">
-                              <Package size={17} style={{ opacity: 0.9 }} />
+                              <Package size={16} />
                               <strong>{currentOrderId}</strong>
                             </span>
                             <span className={`chat-order-status-pill ${orderStatus.toLowerCase().replace(/\s+/g, '-')}`}>
-                              • {orderStatus}
+                              {orderStatus}
+                            </span>
+                            <span className={`meta-badge-chip payment-${paymentMethod.toLowerCase().replace(/\s+/g, '-')}`}>
+                              <CreditCard size={11} /> {paymentMethod}
+                            </span>
+                            <span className={`meta-badge-chip payment-status-${paymentStatus.toLowerCase()}`}>
+                              {paymentStatus === 'Paid' ? <CheckCircle2 size={11} /> : <Clock size={11} />} {paymentStatus}
                             </span>
                           </div>
-                          <div className="meta-details-sub">
-                            <span className="meta-item">
-                              <Calendar size={13} /> {orderDateStr}
-                            </span>
-                            <span className="meta-sep">•</span>
-                            <span className="meta-item bold-val">
-                              Rs. {orderTotalStr}
-                            </span>
-                            {orderSummaryStr && (
-                              <>
-                                <span className="meta-sep">•</span>
-                                <span className="meta-item summary-txt" title={orderSummaryStr}>
-                                  {orderSummaryStr}
-                                </span>
-                              </>
-                            )}
+                          <div className="banner-actions-right">
+                            <button 
+                              className="btn-banner-action" 
+                              onClick={() => {
+                                if (activeOrderObj) {
+                                  setSelectedSellerOrder(activeOrderObj);
+                                  setActiveTab('orders');
+                                } else {
+                                  const found = sellerOrders.find(o => String(o.id) === String(activeConv?.id) || `#ORD-${o.id}` === currentOrderId);
+                                  if (found) {
+                                    setSelectedSellerOrder(found);
+                                    setActiveTab('orders');
+                                  } else {
+                                    showToast(`Order details for ${currentOrderId}`);
+                                  }
+                                }
+                              }}
+                            >
+                              <Eye size={14} />
+                              <span>Full Details</span>
+                            </button>
                           </div>
                         </div>
 
-                        <div className="banner-actions-right">
-                          <button 
-                            className="btn-banner-action" 
-                            onClick={() => {
-                              if (activeOrderObj) {
-                                setSelectedSellerOrder(activeOrderObj);
-                                setActiveTab('orders');
-                              } else {
-                                const found = sellerOrders.find(o => String(o.id) === String(activeConv?.id) || `#ORD-${o.id}` === currentOrderId);
-                                if (found) {
-                                  setSelectedSellerOrder(found);
-                                  setActiveTab('orders');
-                                } else {
-                                  showToast(`Order details for ${currentOrderId}`);
-                                }
-                              }
-                            }}
-                          >
-                            <Eye size={14} />
-                            <span>Full Order Details</span>
-                          </button>
+                        {/* Row 2: Date, Total, Customer Phone */}
+                        <div className="banner-detail-row">
+                          <span className="banner-info-item">
+                            <Calendar size={13} /> {orderDateStr}{orderTimeStr ? ` at ${orderTimeStr}` : ''}
+                          </span>
+                          <span className="banner-info-item highlight">
+                            Rs. {orderTotalStr}
+                          </span>
+                          {custPhone && (
+                            <span className="banner-info-item">
+                              <Phone size={12} /> {custPhone}
+                            </span>
+                          )}
+                          {activeConv?.email && (
+                            <span className="banner-info-item">
+                              <Mail size={12} /> {activeConv.email}
+                            </span>
+                          )}
                         </div>
+
+                        {/* Row 3: Shipping Address */}
+                        {shippingAddr && (
+                          <div className="banner-detail-row">
+                            <span className="banner-info-item full-width">
+                              <MapPin size={13} />
+                              <span>{typeof shippingAddr === 'string' ? shippingAddr : [shippingAddr.name || shippingAddr.full_name, shippingAddr.address || shippingAddr.street, shippingAddr.city, shippingAddr.state, shippingAddr.zip || shippingAddr.postal_code].filter(Boolean).join(', ')}</span>
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Row 4: TCS Tracking */}
+                        {tcsTracking && (
+                          <div className="banner-detail-row">
+                            <span className="banner-info-item">
+                              <Truck size={13} /> TCS CN: <strong>{tcsTracking}</strong>
+                            </span>
+                            {tcsStatus && (
+                              <span className="meta-badge-chip">{tcsStatus}</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Row 5: Items Preview */}
+                        {orderItems.length > 0 && (
+                          <div className="banner-items-row">
+                            {orderItems.map((item, iIdx) => {
+                              const itemImg = item.image || item.product_image || item.thumbnail || '';
+                              const itemName = item.name || item.product_name || 'Product';
+                              const itemQty = item.quantity || item.qty || 1;
+                              const itemPrice = Number(item.price || item.unit_price || 0).toLocaleString();
+                              return (
+                                <div key={iIdx} className="item-preview-chip">
+                                  {itemImg && (
+                                    <img src={getImageUrl(itemImg)} alt={itemName} className="item-preview-thumb" onError={(e) => { e.target.style.display = 'none'; }} />
+                                  )}
+                                  <span className="item-preview-name" title={itemName}>{itemName}</span>
+                                  <span className="item-preview-qty">x{itemQty}</span>
+                                  <span className="item-preview-price">Rs. {itemPrice}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* Messages Body Scroll */}

@@ -706,7 +706,7 @@ export default function AdminDashboard() {
                         <div className="admin-product-card-name">{p.name}</div>
                         <div className="admin-product-card-meta">{p.category_name || 'Uncategorized'} · {p.stock ?? '—'} in stock</div>
                         <div className="admin-product-card-footer">
-                          <span className="admin-product-price">${price.toFixed(2)}</span>
+                          <span className="admin-product-price">Rs. {Number(price).toLocaleString()}</span>
                           <StatusBadge status={parseInt(p.stock) > 0 ? 'Available' : 'Out of Stock'} />
                         </div>
                       </div>
@@ -1051,7 +1051,7 @@ function OrdersTable({ orders, onStatusChange, compact = false }) {
                 </div>
               </td>
               {!compact && <td style={{ color: 'var(--admin-text-muted)', fontSize: '0.8rem' }}>{o.date || o.created_at || '—'}</td>}
-              <td style={{ fontWeight: 700 }}>{o.price || (o.total_price ? `$${o.total_price}` : '—')}</td>
+              <td style={{ fontWeight: 700 }}>{o.price || (o.total_price ? `Rs. ${Number(o.total_price).toLocaleString()}` : '—')}</td>
               <td style={{ color: 'var(--admin-text-muted)', fontSize: '0.8rem' }}>{o.payment || o.payment_method || '—'}</td>
               <td><StatusBadge status={o.status} /></td>
               {!compact && (

@@ -7,10 +7,21 @@ const API_BASE_URL = isDev ? '/ecom_api' : 'http://192.168.100.203/ecom_api';
 // Build a full image URL from relative paths stored in DB or public assets
 export function getImageUrl(relativePath) {
   if (!relativePath) return '/hero_lifestyle.png'; // fallback
-  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('data:')) {
     return relativePath;
   }
+
+  // If already prefixed with API_BASE_URL
+  if (API_BASE_URL && relativePath.startsWith(API_BASE_URL)) {
+    return relativePath;
+  }
+
   const cleanPath = relativePath.replace(/^\//, '');
+
+  // If already starts with ecom_api/
+  if (cleanPath.startsWith('ecom_api/')) {
+    return `/${cleanPath}`;
+  }
 
   // Local frontend public assets served by Vite directly from /public
   const publicAssets = [
@@ -67,11 +78,39 @@ const DEFAULT_CATEGORY_IMAGES = [
   'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=400&auto=format&fit=crop',
 ];
 
+export function isCustomCategoryImageUrl(val) {
+  if (!val || typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === '/hero_lifestyle.png' || trimmed === 'hero_lifestyle.png') return false;
+
+  // Known non-image Material Icon strings or generic names
+  const legacyIcons = [
+    'devices', 'checkroom', 'home', 'face', 'sports',
+    'category', 'shopping_bag', 'shopping_cart', 'image', 'star',
+    'electronics', 'fashion', 'beauty'
+  ];
+  if (legacyIcons.includes(trimmed.toLowerCase())) return false;
+
+  // Real image URL or uploaded file path
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('uploads/') ||
+    trimmed.startsWith('/uploads/') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.includes('/') ||
+    /\.(jpg|jpeg|png|webp|gif|svg|avif)(\?.*)?$/i.test(trimmed)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function getCategoryImage(cat, index = 0) {
   if (!cat) return DEFAULT_CATEGORY_IMAGES[index % DEFAULT_CATEGORY_IMAGES.length];
   
-  const rawImage = typeof cat === 'string' ? cat : (cat.image || cat.icon);
-  if (rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== '/hero_lifestyle.png') {
+  const rawImage = typeof cat === 'string' ? cat : (cat.image || cat.icon || cat.image_url);
+  if (isCustomCategoryImageUrl(rawImage)) {
     return getImageUrl(rawImage);
   }
 
@@ -87,6 +126,25 @@ export function getCategoryImage(cat, index = 0) {
   }
 
   return DEFAULT_CATEGORY_IMAGES[index % DEFAULT_CATEGORY_IMAGES.length];
+}
+
+export function normalizeCategory(c, index = 0) {
+  if (!c) return null;
+  const rawImg = c.icon || c.image || c.image_url || null;
+  const hasCustom = isCustomCategoryImageUrl(rawImg);
+  const resolvedImage = hasCustom ? getImageUrl(rawImg) : getCategoryImage(c, index);
+
+  return {
+    id: String(c.id),
+    name: c.name || '',
+    icon: c.icon || null,
+    image_url: rawImg || null,
+    parent_id: c.parent_id ? String(c.parent_id) : null,
+    product_count: c.product_count !== undefined ? Number(c.product_count) : 0,
+    hasCustomImage: hasCustom,
+    image: resolvedImage,
+    rawImage: rawImg,
+  };
 }
 
 // Generic fetch wrapper

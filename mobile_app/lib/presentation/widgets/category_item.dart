@@ -2,13 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:ecomapp/data/models/category_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecomapp/core/network/api_endpoints.dart';
 import 'package:ecomapp/core/theme/app_theme.dart';
 import 'package:ecomapp/presentation/screens/main/category_listing_screen.dart';
 
 class CategoryAppearanceHelper {
   CategoryAppearanceHelper._();
 
-  static String imageUrl(String categoryName) {
+  static String imageUrl(String categoryName, [String? icon]) {
+    if (icon != null && icon.trim().isNotEmpty) {
+      final clean = icon.trim();
+      final legacy = ['devices', 'checkroom', 'home', 'face', 'sports', 'category'];
+      if (!legacy.contains(clean.toLowerCase())) {
+        if (clean.startsWith('http://') || clean.startsWith('https://')) {
+          return clean;
+        }
+        final path = clean.startsWith('/') ? clean.substring(1) : clean;
+        return '${ApiEndpoints.baseUrl}/$path';
+      }
+    }
+
     switch (categoryName.toLowerCase()) {
       case 'fashion':
       case 'clothing':
@@ -64,7 +77,7 @@ class CategoryItem extends StatelessWidget {
                 border: Border.all(color: AppColors.border, width: 1.5),
                 image: DecorationImage(
                   image: CachedNetworkImageProvider(
-                    CategoryAppearanceHelper.imageUrl(category.name),
+                    CategoryAppearanceHelper.imageUrl(category.name, category.icon),
                   ),
                   fit: BoxFit.cover,
                 ),

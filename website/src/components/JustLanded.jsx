@@ -69,7 +69,7 @@ export default function JustLanded() {
                 <span className="landed-category">{product.category}</span>
                 <h3 className="landed-name">{product.name}</h3>
                 <div className="landed-footer">
-                  <span className="landed-price">${product.price.toFixed(2)}</span>
+                  <span className="landed-price">Rs. {Number(product.price).toLocaleString()}</span>
                   <button
                     className="add-btn"
                     onClick={(e) => {

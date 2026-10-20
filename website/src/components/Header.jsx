@@ -303,7 +303,7 @@ export default function Header() {
           <span className="star">☆</span>
           <span>USE CODE: WINTER20</span>
           <span className="star">☆</span>
-          <span>FREE SHIPPING ON ORDERS OVER $100</span>
+          <span>FREE SHIPPING ON ORDERS OVER Rs. 3,000</span>
           <span className="star">☆</span>
           <span>LIMITED TIME ONLY</span>
           <span className="star">☆</span>
@@ -311,7 +311,7 @@ export default function Header() {
           <span className="star">☆</span>
           <span>USE CODE: WINTER20</span>
           <span className="star">☆</span>
-          <span>FREE SHIPPING ON ORDERS OVER $100</span>
+          <span>FREE SHIPPING ON ORDERS OVER Rs. 3,000</span>
           <span className="star">☆</span>
           <span>LIMITED TIME ONLY</span>
           <span className="star">☆</span>

@@ -67,7 +67,7 @@ export default function CartDrawer() {
                 <div className="cart-item-details">
                   <span className="item-category">{item.category}</span>
                   <h4 className="item-name">{item.name}</h4>
-                  <span className="item-price">${item.price.toFixed(2)}</span>
+                  <span className="item-price">Rs. {Number(item.price).toLocaleString()}</span>
 
                   <div className="cart-item-actions">
                     <div className="quantity-counter">
@@ -111,7 +111,7 @@ export default function CartDrawer() {
           <div className="cart-drawer-footer">
             <div className="summary-row">
               <span>Subtotal</span>
-              <span className="subtotal-amount">${cartSubtotal.toFixed(2)}</span>
+              <span className="subtotal-amount">Rs. {Number(cartSubtotal).toLocaleString()}</span>
             </div>
             <p className="taxes-note">Taxes and shipping calculated at checkout.</p>
 

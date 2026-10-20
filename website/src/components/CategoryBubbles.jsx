@@ -11,8 +11,8 @@ export default function CategoryBubbles() {
   const categories = liveCategories && liveCategories.length > 0
     ? liveCategories.map((cat, idx) => ({
         id: cat.id,
-        name: cat.name.toUpperCase(),
-        image: getCategoryImage(cat, idx)
+        name: (cat.name || '').toUpperCase(),
+        image: cat.image || getCategoryImage(cat, idx)
       }))
     : MOCK_CATEGORIES.map((cat, idx) => ({
         ...cat,
@@ -32,7 +32,7 @@ export default function CategoryBubbles() {
       <div className="container">
         <div className="bubbles-row">
           {categories.map((cat, idx) => {
-            const isSelected = selectedCategoryFilter === cat.id;
+            const isSelected = String(selectedCategoryFilter) === String(cat.id);
             const imageSrc = cat.image || getCategoryImage(cat, idx);
             return (
               <button
@@ -41,7 +41,17 @@ export default function CategoryBubbles() {
                 onClick={() => handleCategoryClick(cat.id)}
               >
                 <div className="bubble-circle">
-                  <img src={imageSrc} alt={cat.name} className="bubble-img" />
+                  <img
+                    src={imageSrc}
+                    alt={cat.name}
+                    className="bubble-img"
+                    onError={(e) => {
+                      if (!e.target.dataset.hasError) {
+                        e.target.dataset.hasError = 'true';
+                        e.target.src = getCategoryImage(cat.name, idx);
+                      }
+                    }}
+                  />
                 </div>
                 <span className="bubble-label">{cat.name}</span>
               </button>

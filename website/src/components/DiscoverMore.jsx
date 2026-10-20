@@ -39,8 +39,8 @@ export default function DiscoverMore() {
   const filteredProducts = productsSource.filter((product) => {
     const matchesCategory =
       selectedCategoryFilter === 'ALL' ||
-      product.categoryId === selectedCategoryFilter ||
-      product.category.toUpperCase() === selectedCategoryFilter;
+      String(product.categoryId) === String(selectedCategoryFilter) ||
+      (product.category && product.category.toUpperCase() === String(selectedCategoryFilter).toUpperCase());
       
     const matchesSearch =
       searchQuery.trim() === '' ||
@@ -123,7 +123,7 @@ export default function DiscoverMore() {
                     <span className="discover-category">{product.category}</span>
                     <h3 className="discover-item-name">{product.name}</h3>
                     <div className="discover-footer">
-                      <span className="discover-item-price">${product.price.toFixed(2)}</span>
+                      <span className="discover-item-price">Rs. {Number(product.price).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

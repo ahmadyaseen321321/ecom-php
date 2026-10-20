@@ -192,7 +192,7 @@ export default function OrdersPage() {
           return s === 'pendingpayment' || s === 'pending';
         }
         if (target === 'processing') {
-          return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped';
+          return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped' || s === 'confirmed' || s === 'paid';
         }
         if (target === 'onhold') {
           return s === 'onhold' || s === 'hold';
@@ -733,7 +733,7 @@ export default function OrdersPage() {
                   const t = tab.toLowerCase().replace(/\s+/g, '');
                   if (t === 'completed') return s === 'completed' || s === 'delivered';
                   if (t === 'pendingpayment') return s === 'pendingpayment' || s === 'pending';
-                  if (t === 'processing') return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped';
+                  if (t === 'processing') return s === 'processing' || s === 'readytoship' || s === 'intransit' || s === 'shipped' || s === 'confirmed' || s === 'paid';
                   if (t === 'onhold') return s === 'onhold' || s === 'hold';
                   if (t === 'cancelled') return s === 'cancelled' || s === 'canceled';
                   if (t === 'refunded') return s === 'refunded' || s === 'refund';
@@ -793,11 +793,12 @@ export default function OrdersPage() {
               const firstItem = order.items && order.items.length > 0 ? order.items[0] : null;
               const firstItemImage = firstItem?.main_image || firstItem?.image || firstItem?.image_url;
               const orderTotal = Number(order.total ?? order.total_amount ?? order.total_price ?? 0);
-              const statusLower = (order.status || '').toLowerCase();
-              const isDelivered = statusLower.includes('delivered');
+              const rawStatus = (order.status || order.order_status || 'processing').trim();
+              const statusLower = rawStatus.toLowerCase();
+              const isDelivered = statusLower.includes('deliver') || statusLower.includes('complete');
               const isInTransit = statusLower.includes('transit') || statusLower.includes('shipped');
-              const isProcessing = statusLower.includes('processing') || statusLower.includes('pending');
-              const isCancelled = statusLower.includes('cancel');
+              const isProcessing = statusLower.includes('processing') || statusLower.includes('pending') || statusLower.includes('confirmed') || statusLower.includes('paid') || statusLower.includes('hold');
+              const isCancelled = statusLower.includes('cancel') || statusLower.includes('fail') || statusLower.includes('refund');
 
               return (
                 <div key={order.id} className="history-order-card">
@@ -808,7 +809,7 @@ export default function OrdersPage() {
                         {new Date(order.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
-                    {renderStatusPill(order.status)}
+                    {renderStatusPill(order.status || order.order_status)}
                   </div>
 
                   <div className="card-item-body">
@@ -829,7 +830,7 @@ export default function OrdersPage() {
                     </span>
 
                   <div className="card-action-buttons">
-                    {isDelivered && (
+                    {isDelivered ? (
                       <>
                         <button
                           className="btn-outline"
@@ -844,9 +845,7 @@ export default function OrdersPage() {
                           View Details
                         </button>
                       </>
-                    )}
-
-                    {isInTransit && (
+                    ) : isInTransit ? (
                       <>
                         <button
                           className="btn-outline"
@@ -861,9 +860,7 @@ export default function OrdersPage() {
                           Track Order
                         </button>
                       </>
-                    )}
-
-                    {isProcessing && (
+                    ) : isProcessing ? (
                       <>
                         <button
                           className="btn-outline"
@@ -878,14 +875,27 @@ export default function OrdersPage() {
                           View Details
                         </button>
                       </>
-                    )}
-
-                    {isCancelled && (
+                    ) : isCancelled ? (
+                      <>
+                        <button
+                          className="btn-outline"
+                          onClick={() => handleReorder(order)}
+                        >
+                          Reorder
+                        </button>
+                        <button
+                          className="btn-green-fill"
+                          onClick={() => setSelectedOrderDetails(order)}
+                        >
+                          View Details
+                        </button>
+                      </>
+                    ) : (
                       <button
                         className="btn-green-fill"
-                        onClick={() => handleReorder(order)}
+                        onClick={() => setSelectedOrderDetails(order)}
                       >
-                        Reorder
+                        View Details
                       </button>
                     )}
                   </div>

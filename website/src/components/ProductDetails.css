@@ -1233,3 +1233,16 @@
     height: 300px;
   }
 }
+/* Reviewed Badge Pill */
+.reviewed-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}

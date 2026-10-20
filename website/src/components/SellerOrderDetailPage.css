@@ -125,6 +125,31 @@
   opacity: 0.92;
 }
 
+.btn-ship-tcs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s ease;
+}
+
+.btn-ship-tcs:hover {
+  opacity: 0.92;
+}
+
+.btn-ship-tcs:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .order-detail-title-banner {
   display: flex;
   flex-direction: column;

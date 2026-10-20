@@ -69,16 +69,18 @@ if ($method === 'GET') {
         $stmt->execute();
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
+        $sellerUserId = $seller['user_id'] ?? $userId;
         // Fetch unique orders that contain at least one product from this seller
         $query = "SELECT DISTINCT o.id, o.order_status as status, o.created_at, o.shipping_address, o.payment_method, o.payment_status, o.tcs_cn, o.tcs_status, o.cod_paid_status, u.full_name as customer_name, u.phone as customer_phone
                   FROM orders o
                   JOIN users u ON o.user_id = u.id
                   JOIN order_items oi ON o.id = oi.order_id
                   JOIN products p ON oi.product_id = p.id
-                  WHERE p.seller_id = :seller_id
+                  WHERE (p.seller_id = :seller_id OR p.seller_id = :seller_user_id)
                   ORDER BY o.created_at DESC";
         $stmt = $db->prepare($query);
         $stmt->bindParam(':seller_id', $sellerId);
+        $stmt->bindParam(':seller_user_id', $sellerUserId);
         $stmt->execute();
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -103,8 +105,10 @@ if ($method === 'GET') {
                       WHERE oi.order_id = :order_id";
         $params = [':order_id' => $order['id']];
         if ($role !== 'admin' && !empty($sellerId)) {
-            $itemQuery .= " AND p.seller_id = :seller_id";
+            $sellerUserId = $seller['user_id'] ?? $userId;
+            $itemQuery .= " AND (p.seller_id = :seller_id OR p.seller_id = :seller_user_id)";
             $params[':seller_id'] = $sellerId;
+            $params[':seller_user_id'] = $sellerUserId;
         }
 
         $itemStmt = $db->prepare($itemQuery);

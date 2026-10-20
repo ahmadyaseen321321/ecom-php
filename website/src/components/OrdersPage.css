@@ -298,7 +298,8 @@
   gap: 10px;
 }
 
-.btn-outline {
+.card-action-buttons .btn-outline,
+.history-order-card .btn-outline {
   padding: 8px 16px;
   border: 1px solid #d1d5db;
   background: #ffffff;
@@ -309,14 +310,19 @@
   cursor: pointer;
   font-family: inherit;
   transition: all 0.2s ease;
+  backdrop-filter: none;
 }
 
-.btn-outline:hover {
+.card-action-buttons .btn-outline:hover,
+.history-order-card .btn-outline:hover {
   background: #f9fafb;
   border-color: #9ca3af;
+  color: #111827;
+  transform: translateY(-1px);
 }
 
-.btn-green-fill {
+.card-action-buttons .btn-green-fill,
+.history-order-card .btn-green-fill {
   padding: 8px 18px;
   border: none;
   background: #D4E9D7;
@@ -327,10 +333,15 @@
   cursor: pointer;
   font-family: inherit;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.btn-green-fill:hover {
+.card-action-buttons .btn-green-fill:hover,
+.history-order-card .btn-green-fill:hover {
   background: #C4E3C8;
+  transform: translateY(-1px);
 }
 
 /* Footer Bar */

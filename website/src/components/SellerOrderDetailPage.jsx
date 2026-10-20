@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import { getImageUrl, tcsTrackingApi, openTcsLabelApi } from '../services/api';
+import { getImageUrl, tcsTrackingApi, openTcsLabelApi, tcsShipApi } from '../services/api';
 import TrackingTimeline from './TrackingTimeline';
 import {
   Printer,
@@ -24,6 +24,7 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
   const numericId = rawOrderId.replace(/[^0-9]/g, '');
   const [tracking, setTracking] = useState(null);
   const [trackLoading, setTrackLoading] = useState(false);
+  const [shippingLoading, setShippingLoading] = useState(false);
 
   const loadTracking = async () => {
     if (!numericId) return;
@@ -49,7 +50,7 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
   const handlePrintLabel = async () => {
     const cn = tracking?.tcs_cn || order.tcs_cn;
     if (!cn) {
-      showToast('Not booked with TCS yet — use the Shipments tab to book', 'error');
+      showToast('Not booked with TCS yet — book shipment first', 'error');
       return;
     }
     try {
@@ -57,6 +58,24 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
       showToast('TCS label downloaded — open the PDF to print');
     } catch (e) {
       showToast(e.message || 'Label failed', 'error');
+    }
+  };
+
+  const handleShipWithTcs = async () => {
+    if (!numericId) return;
+    setShippingLoading(true);
+    try {
+      const res = await tcsShipApi(numericId);
+      if (res?.tcs_cn) {
+        showToast(`Booked with TCS! CN: ${res.tcs_cn}`);
+        loadTracking();
+      } else {
+        showToast(res?.message || 'TCS booking failed', 'error');
+      }
+    } catch (e) {
+      showToast(e.message || 'TCS booking error', 'error');
+    } finally {
+      setShippingLoading(false);
     }
   };
 
@@ -120,10 +139,17 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
           <button className="btn-outline-dark" onClick={() => onOpenOrderChat ? onOpenOrderChat(order) : showToast(`Opening chat with ${customerName}...`)}>
             Contact Customer
           </button>
-          <button className="btn-print-label" onClick={handlePrintLabel}>
-            <Printer size={16} />
-            <span>Print Label</span>
-          </button>
+          {!(tracking?.tcs_cn || order.tcs_cn) ? (
+            <button className="btn-ship-tcs" onClick={handleShipWithTcs} disabled={shippingLoading}>
+              <Truck size={16} />
+              <span>{shippingLoading ? 'Booking TCS...' : 'Ship with TCS'}</span>
+            </button>
+          ) : (
+            <button className="btn-print-label" onClick={handlePrintLabel}>
+              <Printer size={16} />
+              <span>Print Label</span>
+            </button>
+          )}
         </div>
       </div>
 

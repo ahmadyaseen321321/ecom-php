@@ -77,6 +77,8 @@ export default function ProductDetails() {
   const [reviewsList, setReviewsList] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [canReviewProduct, setCanReviewProduct] = useState(false);
+  const [hasReviewedProduct, setHasReviewedProduct] = useState(false);
 
   // Review submission modal state
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -92,18 +94,34 @@ export default function ProductDetails() {
   const loadReviewsData = () => {
     if (!selectedProductId) {
       setReviewsList([]);
+      setCanReviewProduct(false);
+      setHasReviewedProduct(false);
       setReviewsLoading(false);
       return;
     }
 
     setReviewsLoading(true);
     fetchReviews(selectedProductId)
-      .then((list) => {
-        setReviewsList(Array.isArray(list) ? list : []);
+      .then((res) => {
+        if (res && typeof res === 'object' && 'reviews' in res) {
+          setReviewsList(Array.isArray(res.reviews) ? res.reviews : []);
+          setCanReviewProduct(Boolean(res.canReview));
+          setHasReviewedProduct(Boolean(res.hasReviewed));
+        } else if (Array.isArray(res)) {
+          setReviewsList(res);
+          setCanReviewProduct(false);
+          setHasReviewedProduct(false);
+        } else {
+          setReviewsList([]);
+          setCanReviewProduct(false);
+          setHasReviewedProduct(false);
+        }
       })
       .catch((err) => {
         console.error('[Reviews] error:', err);
         setReviewsList([]);
+        setCanReviewProduct(false);
+        setHasReviewedProduct(false);
       })
       .finally(() => {
         setReviewsLoading(false);
@@ -112,7 +130,7 @@ export default function ProductDetails() {
 
   useEffect(() => {
     loadReviewsData();
-  }, [selectedProductId]);
+  }, [selectedProductId, user]);
 
   useEffect(() => {
     if (product) {
@@ -513,10 +531,17 @@ export default function ProductDetails() {
               <h2 className="reviews-section-title">Customer Feedback & Reviews</h2>
               <p className="reviews-section-subtitle">Real experiences shared by verified Novanest customers</p>
             </div>
-            <button className="write-review-btn" onClick={() => setIsReviewModalOpen(true)}>
-              <MessageSquarePlus size={16} />
-              <span>Write a Review</span>
-            </button>
+            {canReviewProduct ? (
+              <button className="write-review-btn" onClick={() => setIsReviewModalOpen(true)}>
+                <MessageSquarePlus size={16} />
+                <span>Write a Review</span>
+              </button>
+            ) : hasReviewedProduct ? (
+              <span className="reviewed-badge-pill">
+                <CheckCircle2 size={15} />
+                <span>Reviewed</span>
+              </span>
+            ) : null}
           </div>
 
           {reviewsLoading ? (
@@ -530,11 +555,13 @@ export default function ProductDetails() {
                 <Star size={32} />
               </div>
               <h3>No reviews yet for this product</h3>
-              <p>Be the first customer to share your thoughts and help others make the right choice!</p>
-              <button className="write-review-btn primary" onClick={() => setIsReviewModalOpen(true)}>
-                <MessageSquarePlus size={15} />
-                <span>Write the First Review</span>
-              </button>
+              <p>Reviews can only be submitted by verified customers who ordered and received this item.</p>
+              {canReviewProduct && (
+                <button className="write-review-btn primary" onClick={() => setIsReviewModalOpen(true)}>
+                  <MessageSquarePlus size={15} />
+                  <span>Write the First Review</span>
+                </button>
+              )}
             </div>
           ) : (
             <>

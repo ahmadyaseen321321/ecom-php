@@ -245,12 +245,15 @@ export async function fetchReviews(productId) {
     const text = await response.text();
     console.log('[fetchReviews] raw text for pid', productId, ':', text.substring(0, 300));
     const data = JSON.parse(text);
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.data)) return data.data;
-    return [];
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+    return {
+      reviews: list,
+      canReview: Boolean(data?.can_review),
+      hasReviewed: Boolean(data?.has_reviewed)
+    };
   } catch (error) {
     console.error('[fetchReviews] Error for pid', productId, ':', error);
-    return [];
+    return { reviews: [], canReview: false, hasReviewed: false };
   }
 }
 

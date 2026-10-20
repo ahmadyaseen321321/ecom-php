@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCart } from '../context/CartContext';
 import { fetchSellerOrdersApi, getImageUrl } from '../services/api';
 import {
@@ -15,7 +15,8 @@ import {
   ShoppingBag,
   Clock,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Timer
 } from 'lucide-react';
 import './SellerOrdersPage.css';
 
@@ -27,6 +28,39 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const ORDERS_PER_PAGE = 10;
+  const [timerTick, setTimerTick] = useState(0);
+
+  // Tick every 60 seconds so elapsed-time cells stay fresh
+  useEffect(() => {
+    const interval = setInterval(() => setTimerTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getElapsedTime = useCallback((orderDate) => {
+    if (!orderDate) return { text: '—', isOverdue: false };
+    const placed = new Date(orderDate);
+    if (isNaN(placed.getTime())) return { text: '—', isOverdue: false };
+    const now = new Date();
+    let diffMs = now - placed;
+    if (diffMs < 0) diffMs = 0;
+
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const totalHours   = Math.floor(totalMinutes / 60);
+    const days         = Math.floor(totalHours / 24);
+    const hours        = totalHours % 24;
+    const minutes      = totalMinutes % 60;
+
+    let text;
+    if (days > 0) {
+      text = `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      text = `${hours}h ${minutes}m`;
+    } else {
+      text = `${minutes}m`;
+    }
+
+    return { text, isOverdue: days >= 3 };
+  }, [timerTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (propOrders && propOrders.length > 0) {
@@ -178,6 +212,7 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
                 <th>Order ID</th>
                 <th>Customer Name</th>
                 <th>Date</th>
+                <th>Timer</th>
                 <th>Total Price</th>
                 <th>Status</th>
                 <th className="text-right">Actions</th>
@@ -186,7 +221,7 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                       <Loader2 size={20} className="admin-spin" /> Loading orders...
                     </div>
@@ -194,7 +229,7 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
                 </tr>
               ) : paginatedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
                     <Package size={36} style={{ margin: '0 auto 8px', display: 'block', opacity: 0.5 }} />
                     No orders found
                   </td>
@@ -227,6 +262,17 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
                         </div>
                       </td>
                       <td className="date-cell">{dateStr}</td>
+                      <td className="timer-cell">
+                        {statusInfo.type === 'pending' ? (() => {
+                          const elapsed = getElapsedTime(ord.date || ord.created_at);
+                          return (
+                            <span className={`order-timer-badge ${elapsed.isOverdue ? 'overdue' : ''}`}>
+                              <Timer size={13} />
+                              {elapsed.text}
+                            </span>
+                          );
+                        })() : <span style={{ color: '#d1d5db' }}>—</span>}
+                      </td>
                       <td className="total-price-cell">Rs. {totalVal}</td>
                       <td>
                         <span className={`s-status-badge ${statusInfo.type}`}>

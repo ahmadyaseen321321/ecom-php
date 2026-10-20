@@ -33,10 +33,40 @@ if ($method == 'GET') {
 
             if ($stmt->execute()) {
                 $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // Optional: check if current authenticated user is eligible to review this product
+                $canReview = false;
+                $hasReviewed = false;
+                $tokenUserId = $jwtHelper->validateTokenAndGetUserId();
+                if ($tokenUserId) {
+                    $eligibilityQuery = "SELECT COUNT(*) as count 
+                                         FROM orders o 
+                                         JOIN order_items oi ON o.id = oi.order_id 
+                                         WHERE o.user_id = :u_id 
+                                           AND oi.product_id = :p_id 
+                                           AND (LOWER(o.order_status) IN ('delivered', 'completed') OR LOWER(o.status) IN ('delivered', 'completed'))";
+                    $eligStmt = $db->prepare($eligibilityQuery);
+                    $eligStmt->bindParam(':u_id', $tokenUserId);
+                    $eligStmt->bindParam(':p_id', $product_id);
+                    $eligStmt->execute();
+                    $orderCount = (int)$eligStmt->fetchColumn();
+
+                    $userRevQuery = "SELECT COUNT(*) as count FROM reviews WHERE user_id = :u_id AND product_id = :p_id";
+                    $userRevStmt = $db->prepare($userRevQuery);
+                    $userRevStmt->bindParam(':u_id', $tokenUserId);
+                    $userRevStmt->bindParam(':p_id', $product_id);
+                    $userRevStmt->execute();
+                    $hasReviewed = (int)$userRevStmt->fetchColumn() > 0;
+
+                    $canReview = ($orderCount > 0) && !$hasReviewed;
+                }
+
                 header("Content-Type: application/json; charset=UTF-8");
                 echo json_encode([
                     "status" => "success",
                     "data" => $reviews,
+                    "can_review" => $canReview,
+                    "has_reviewed" => $hasReviewed,
                     "debug_pid" => $product_id
                 ]);
             } else {
@@ -95,6 +125,29 @@ if ($method == 'GET') {
                         $image_url = "uploads/reviews/" . $file_name;
                     }
                 }
+            }
+
+            // Verify that the user has ordered this product and it was successfully delivered
+            $orderCheckQuery = "SELECT COUNT(*) as count 
+                                FROM orders o 
+                                JOIN order_items oi ON o.id = oi.order_id 
+                                WHERE o.user_id = :user_id 
+                                  AND oi.product_id = :product_id 
+                                  AND (LOWER(o.order_status) IN ('delivered', 'completed') OR LOWER(o.status) IN ('delivered', 'completed'))";
+            $orderCheckStmt = $db->prepare($orderCheckQuery);
+            $orderCheckStmt->bindParam(':user_id', $userId);
+            $orderCheckStmt->bindParam(':product_id', $product_id);
+            $orderCheckStmt->execute();
+            $orderCheck = $orderCheckStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$orderCheck || (int)$orderCheck['count'] === 0) {
+                http_response_code(403);
+                header("Content-Type: application/json; charset=UTF-8");
+                echo json_encode([
+                    "status" => "error", 
+                    "message" => "You can only write a review for products you have purchased and received."
+                ]);
+                exit();
             }
 
             $query = "INSERT INTO reviews (user_id, product_id, rating, comment, image_url) VALUES (:user_id, :product_id, :rating, :comment, :image_url)";

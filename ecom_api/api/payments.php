@@ -114,6 +114,7 @@ if ($action === 'create') {
         $db->commit();
     } catch (Exception $e) {
         if ($db->inTransaction()) $db->rollBack();
+        http_response_code(400);
         echo json_encode(["status" => "error", "message" => "Could not create order: " . $e->getMessage()]);
         exit();
     }
@@ -126,6 +127,7 @@ if ($action === 'create') {
 
     $session = $stripe->createCheckoutSession($order, $origin, $email);
     if (!$session['ok']) {
+        http_response_code(400);
         echo json_encode(["status" => "error", "message" => $session['error']]);
         exit();
     }

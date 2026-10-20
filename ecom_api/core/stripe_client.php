@@ -168,6 +168,8 @@ class StripeClient
             CURLOPT_TIMEOUT        => 25,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_CUSTOMREQUEST  => $method,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_HTTPHEADER     => [
                 'Authorization: Bearer ' . $this->secretKey,
                 'Content-Type: application/x-www-form-urlencoded',

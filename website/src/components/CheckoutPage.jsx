@@ -142,7 +142,7 @@ export default function CheckoutPage() {
       });
 
       if (!session || !session.order_id) {
-        showToast('Could not start the payment. Please try again.');
+        showToast(session?.message || 'Could not start the payment. Please try again.');
         return;
       }
 

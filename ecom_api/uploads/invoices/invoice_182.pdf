@@ -1,0 +1,70 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 2639 >>
+stream
+0.157 0.227 0.180 rg 0.00 731.89 595.28 110.00 re f
+BT 1.000 1.000 1.000 rg /F2 24.00 Tf 40.00 799.89 Td (mystore) Tj ET
+BT 0.820 0.880 0.840 rg /F1 10.00 Tf 40.00 771.89 Td (Timeless Essentials & Sustainable Luxury) Tj ET
+BT 1.000 1.000 1.000 rg /F2 20.00 Tf 478.28 799.89 Td (INVOICE) Tj ET
+BT 0.900 0.930 0.910 rg /F1 10.00 Tf 498.08 773.89 Td (No. INV-182) Tj ET
+BT 0.900 0.930 0.910 rg /F1 10.00 Tf 461.68 757.89 Td (Date: Oct 19, 2026) Tj ET
+BT 0.550 0.550 0.550 rg /F2 9.00 Tf 40.00 701.89 Td (BILL TO) Tj ET
+BT 0.070 0.090 0.080 rg /F2 12.00 Tf 40.00 685.89 Td (hello) Tj ET
+BT 0.070 0.090 0.080 rg /F1 9.50 Tf 40.00 668.89 Td (hello@gmail.com   |  123434223112313132) Tj ET
+BT 0.070 0.090 0.080 rg /F1 9.50 Tf 40.00 652.89 Td (testing st no 3, sahiwal \(57000\) | Phone: fdsfdsfds) Tj ET
+BT 0.550 0.550 0.550 rg /F2 9.00 Tf 505.78 701.89 Td (ORDER #182) Tj ET
+BT 0.070 0.090 0.080 rg /F1 9.50 Tf 446.60 685.89 Td (Payment: Card \(Stripe\)) Tj ET
+BT 0.070 0.090 0.080 rg /F1 9.50 Tf 481.18 669.89 Td (Status: Shipped) Tj ET
+0.940 0.950 0.940 rg 40.00 585.89 515.28 22.00 re f
+BT 0.350 0.400 0.370 rg /F2 9.00 Tf 48.00 592.89 Td (ITEM) Tj ET
+BT 0.350 0.400 0.370 rg /F2 9.00 Tf 410.43 592.89 Td (QTY) Tj ET
+BT 0.350 0.400 0.370 rg /F2 9.00 Tf 470.48 592.89 Td (UNIT) Tj ET
+BT 0.350 0.400 0.370 rg /F2 9.00 Tf 522.53 592.89 Td (TOTAL) Tj ET
+BT 0.070 0.090 0.080 rg /F1 10.00 Tf 48.00 571.89 Td (image trial) Tj ET
+BT 0.070 0.090 0.080 rg /F1 10.00 Tf 420.08 571.89 Td (3) Tj ET
+BT 0.070 0.090 0.080 rg /F1 10.00 Tf 464.28 571.89 Td (10.00) Tj ET
+BT 0.070 0.090 0.080 rg /F2 10.00 Tf 519.78 571.89 Td (30.00) Tj ET
+0.900 0.900 0.900 RG 0.40 w 48.00 559.89 m 547.28 559.89 l S
+BT 0.070 0.090 0.080 rg /F1 10.00 Tf 448.68 545.89 Td (Subtotal) Tj ET
+BT 0.070 0.090 0.080 rg /F1 10.00 Tf 521.28 545.89 Td (30.00) Tj ET
+0.157 0.227 0.180 rg 335.28 513.89 220.00 26.00 re f
+BT 1.000 1.000 1.000 rg /F2 11.00 Tf 423.73 522.89 Td (GRAND TOTAL) Tj ET
+BT 1.000 1.000 1.000 rg /F2 12.00 Tf 487.88 522.89 Td (Rs. 30.00) Tj ET
+0.960 0.970 0.960 rg 40.00 409.89 515.28 74.00 re f
+BT 0.350 0.420 0.380 rg /F2 9.00 Tf 52.00 463.89 Td (SHIPPING  TCS COURIER) Tj ET
+BT 0.157 0.227 0.180 rg /F2 14.00 Tf 52.00 443.89 Td (TCS Tracking No: DEMO39326712) Tj ET
+BT 0.070 0.090 0.080 rg /F1 9.50 Tf 52.00 425.89 Td (Status: Shipment booked at TCS facility) Tj ET
+0.850 0.850 0.850 RG 0.50 w 40.00 70.00 m 555.28 70.00 l S
+BT 0.350 0.400 0.370 rg /F2 9.00 Tf 40.00 54.00 Td (Thank you for shopping with mystore.) Tj ET
+BT 0.070 0.090 0.080 rg /F1 8.00 Tf 40.00 40.00 Td (Generated Oct 19, 2026 07:41  |  Keep this invoice for your records and returns.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000257 00000 n 
+0000002947 00000 n 
+0000003044 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3146
+%%EOF

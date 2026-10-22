@@ -372,3 +372,28 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
+
+
+.seller-cancel-reason-subtext {
+  font-size: 0.74rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px dashed #fca5a5;
+  border-radius: 6px;
+  padding: 3px 6px;
+  margin-top: 5px;
+  max-width: 170px;
+  line-height: 1.25;
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+}
+
+.act-icon-btn.cancel-icon-btn {
+  color: #ef4444;
+}
+
+.act-icon-btn.cancel-icon-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}

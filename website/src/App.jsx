@@ -32,6 +32,7 @@ import ContactPage from './components/ContactPage';
 import NovanestNavHeader from './components/NovanestNavHeader';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
 import LoginRequiredModal from './components/LoginRequiredModal';
+import LogoutConfirmModal from './components/LogoutConfirmModal';
 import { CheckCircle } from 'lucide-react';
 import './App.css';
 
@@ -129,6 +130,7 @@ function MainLayout() {
         initialMode={authModalMode}
         onClose={() => setIsAuthModalOpen(false)}
       />
+      <LogoutConfirmModal />
       <InfoModals />
     </div>
   );

@@ -44,15 +44,16 @@ if (!empty($data->order_id) && !empty($data->reason)) {
             exit();
         }
 
-        // 2. Check if cancellation is allowed (not confirmed, shipped, etc.)
-        $allowedStatuses = ['pending', 'processing'];
-        if (!in_array($order['order_status'], $allowedStatuses)) {
+        // 2. Check if cancellation is allowed (not already delivered, cancelled, or returned)
+        $currStatus = strtolower(trim($order['order_status'] ?? ''));
+        $blockedStatuses = ['delivered', 'cancelled', 'returned'];
+        if (in_array($currStatus, $blockedStatuses)) {
             echo json_encode(["status" => "error", "message" => "Order cannot be cancelled as it's already " . $order['order_status']]);
             exit();
         }
 
         // 3. Update order status to cancelled
-        $updateQuery = "UPDATE orders SET order_status = 'cancelled', cancellation_reason = :reason WHERE id = :order_id";
+        $updateQuery = "UPDATE orders SET order_status = 'cancelled', status = 'CANCELLED', cancellation_reason = :reason WHERE id = :order_id";
         $updateStmt = $db->prepare($updateQuery);
         $updateStmt->bindParam(':order_id', $orderId);
         $updateStmt->bindParam(':reason', $reason);

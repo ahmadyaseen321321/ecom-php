@@ -10,14 +10,14 @@ export default function CategoryBubbles() {
   // Use live categories if available; otherwise fallback to mock categories
   const categories = liveCategories && liveCategories.length > 0
     ? liveCategories.map((cat, idx) => ({
-        id: cat.id,
-        name: (cat.name || '').toUpperCase(),
-        image: cat.image || getCategoryImage(cat, idx)
-      }))
+      id: cat.id,
+      name: cat.name.toUpperCase(),
+      image: getCategoryImage(cat, idx)
+    }))
     : MOCK_CATEGORIES.map((cat, idx) => ({
-        ...cat,
-        image: getCategoryImage(cat, idx)
-      }));
+      ...cat,
+      image: getCategoryImage(cat, idx)
+    }));
 
   const handleCategoryClick = (catId) => {
     setSelectedCategoryFilter(catId);
@@ -46,10 +46,7 @@ export default function CategoryBubbles() {
                     alt={cat.name}
                     className="bubble-img"
                     onError={(e) => {
-                      if (!e.target.dataset.hasError) {
-                        e.target.dataset.hasError = 'true';
-                        e.target.src = getCategoryImage(cat.name, idx);
-                      }
+                      e.target.src = getCategoryImage(cat.name, idx);
                     }}
                   />
                 </div>

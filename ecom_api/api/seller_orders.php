@@ -176,16 +176,19 @@ if ($method === 'GET') {
     }
     $customerId = $orderData['customer_id'];
 
-    $updateQuery = "UPDATE orders SET order_status = :status";
-    if ($newStatus === 'CANCELLED' && $reason !== null) {
+    $statusStr = strtoupper($data['status']);
+    $statusEnum = strtolower($data['status']);
+    $updateQuery = "UPDATE orders SET order_status = :status_enum, status = :status_str";
+    if ($statusEnum === 'cancelled' && $reason !== null) {
         $updateQuery .= ", cancellation_reason = :reason";
     }
     $updateQuery .= " WHERE id = :order_id";
     
     $updateStmt = $db->prepare($updateQuery);
-    $updateStmt->bindParam(':status', $newStatus);
+    $updateStmt->bindParam(':status_enum', $statusEnum);
+    $updateStmt->bindParam(':status_str', $statusStr);
     $updateStmt->bindParam(':order_id', $orderId);
-    if ($newStatus === 'CANCELLED' && $reason !== null) {
+    if ($statusEnum === 'cancelled' && $reason !== null) {
         $updateStmt->bindParam(':reason', $reason);
     }
 

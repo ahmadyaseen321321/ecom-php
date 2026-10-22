@@ -10,6 +10,7 @@ import {
   downloadInvoiceApi,
 } from '../services/api';
 import { STAGES, currentStage } from './TrackingTimeline';
+import CancelOrderModal from './CancelOrderModal';
 import {
   Search,
   ArrowLeft,
@@ -28,7 +29,8 @@ import {
   CircleDot,
   Home,
   Package,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import './OrdersPage.css';
 
@@ -61,7 +63,8 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [timeFilter, setTimeFilter] = useState('All Orders');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
-  const [cancellingId, setCancellingId] = useState(null);
+  const [cancelModalOrder, setCancelModalOrder] = useState(null);
+  const [cancellingLoading, setCancellingLoading] = useState(false);
 
   // Review Modal State
   const [reviewingOrder, setReviewingOrder] = useState(null);
@@ -317,26 +320,54 @@ export default function OrdersPage() {
     );
   }
 
-  const handleCancelOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+  const handleOpenCancelModal = (order, e) => {
+    if (e) e.stopPropagation();
+    setCancelModalOrder(order);
+  };
 
-    setCancellingId(orderId);
+  const handleConfirmCancelOrder = async (reason) => {
+    if (!cancelModalOrder) return;
+    const orderId = cancelModalOrder.id;
+    setCancellingLoading(true);
+
     try {
-      await cancelOrderApi(orderId, 'Customer requested cancellation');
+      await cancelOrderApi(orderId, reason);
       showToast('Order cancelled successfully.');
+
       setOrders((prev) =>
-        prev.map((o) => (String(o.id) === String(orderId) ? { ...o, status: 'Cancelled' } : o))
+        prev.map((o) =>
+          String(o.id) === String(orderId)
+            ? { ...o, status: 'Cancelled', order_status: 'cancelled', cancellation_reason: reason }
+            : o
+        )
       );
+
       if (selectedOrderDetails && String(selectedOrderDetails.id) === String(orderId)) {
-        setSelectedOrderDetails((prev) => (prev ? { ...prev, status: 'Cancelled' } : null));
+        setSelectedOrderDetails((prev) =>
+          prev ? { ...prev, status: 'Cancelled', order_status: 'cancelled', cancellation_reason: reason } : null
+        );
       }
+
+      // Sync with localStorage cache
+      try {
+        const cached = localStorage.getItem('orders_cache');
+        if (cached) {
+          const list = JSON.parse(cached);
+          const updated = list.map((o) =>
+            String(o.id) === String(orderId)
+              ? { ...o, status: 'Cancelled', order_status: 'cancelled', cancellation_reason: reason }
+              : o
+          );
+          localStorage.setItem('orders_cache', JSON.stringify(updated));
+        }
+      } catch {}
+
+      setCancelModalOrder(null);
     } catch (err) {
-      showToast('Order status updated.');
-      setOrders((prev) =>
-        prev.map((o) => (String(o.id) === String(orderId) ? { ...o, status: 'Cancelled' } : o))
-      );
+      console.error('Cancel order error:', err);
+      showToast(err.message || 'Failed to cancel order');
     } finally {
-      setCancellingId(null);
+      setCancellingLoading(false);
     }
   };
 
@@ -510,10 +541,35 @@ export default function OrdersPage() {
                       Placed on {new Date(o.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
-                  <div className="detail-status-tag">
-                    Status: {o.status || 'Out for Delivery'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {!isCancelled && !isDelivered && (
+                      <button
+                        className="btn-outline"
+                        style={{ padding: '6px 14px', fontSize: '0.82rem', borderColor: '#fca5a5', color: '#dc2626', background: '#fff' }}
+                        onClick={() => handleOpenCancelModal(o)}
+                      >
+                        Cancel Order
+                      </button>
+                    )}
+                    <div className="detail-status-tag">
+                      Status: {o.status || 'Out for Delivery'}
+                    </div>
                   </div>
                 </div>
+
+                {isCancelled && (
+                  <div className="order-cancelled-detail-banner">
+                    <div className="cancelled-banner-icon">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div className="cancelled-banner-text">
+                      <strong className="cancelled-banner-title">This Order Was Cancelled</strong>
+                      <p className="cancelled-banner-reason">
+                        <strong>Reason:</strong> {o.cancellation_reason || 'No specific reason provided'}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Progress Bar Timeline */}
                 <div className="timeline-tracker">
@@ -824,6 +880,15 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
+                  {isCancelled && (
+                    <div className="card-cancellation-banner">
+                      <span className="card-cancel-label">Reason:</span>
+                      <span className="card-cancel-reason">
+                        "{order.cancellation_reason || 'Order cancelled'}"
+                      </span>
+                    </div>
+                  )}
+
                   <div className="card-bottom-row">
                     <span className="order-total-price">
                       Rs. {orderTotal.toLocaleString()}
@@ -849,7 +914,7 @@ export default function OrdersPage() {
                       <>
                         <button
                           className="btn-outline"
-                          onClick={() => handleCancelOrder(order.id)}
+                          onClick={(e) => handleOpenCancelModal(order, e)}
                         >
                           Cancel Order
                         </button>
@@ -864,7 +929,7 @@ export default function OrdersPage() {
                       <>
                         <button
                           className="btn-outline"
-                          onClick={() => handleCancelOrder(order.id)}
+                          onClick={(e) => handleOpenCancelModal(order, e)}
                         >
                           Cancel Order
                         </button>
@@ -997,6 +1062,16 @@ export default function OrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Cancel Order Reason Modal */}
+      <CancelOrderModal
+        isOpen={Boolean(cancelModalOrder)}
+        order={cancelModalOrder}
+        isSeller={false}
+        onClose={() => setCancelModalOrder(null)}
+        onConfirm={handleConfirmCancelOrder}
+        loading={cancellingLoading}
+      />
 
       {/* Footer */}
       <footer className="orders-page-footer">

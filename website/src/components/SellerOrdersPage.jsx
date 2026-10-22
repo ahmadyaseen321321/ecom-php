@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCart } from '../context/CartContext';
-import { fetchSellerOrdersApi, getImageUrl } from '../services/api';
+import { useSocket } from '../context/SocketContext';
+import { fetchSellerOrdersApi, updateSellerOrderStatusApi, getImageUrl } from '../services/api';
+import CancelOrderModal from './CancelOrderModal';
 import {
   Search,
   Download,
@@ -22,8 +24,11 @@ import './SellerOrdersPage.css';
 
 export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, onExportCSV, onOpenOrderChat }) {
   const { showToast } = useCart();
+  const { emitOrderStatusUpdate } = useSocket();
   const [orders, setOrders] = useState(propOrders || []);
   const [isLoading, setIsLoading] = useState(!propOrders || propOrders.length === 0);
+  const [cancellingOrder, setCancellingOrder] = useState(null);
+  const [isCancellingLoading, setIsCancellingLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,6 +88,40 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
       console.error('Failed to load seller orders:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleConfirmCancelOrder = async (reason) => {
+    if (!cancellingOrder) return;
+    const rawId = String(cancellingOrder.id || cancellingOrder.order_id || '');
+    const numId = rawId.replace(/[^0-9]/g, '');
+    setIsCancellingLoading(true);
+    try {
+      await updateSellerOrderStatusApi(numId, 'CANCELLED', reason);
+      showToast(`Order #${numId} cancelled successfully.`);
+      setOrders((prev) =>
+        prev.map((o) => {
+          const oId = String(o.id || o.order_id || '').replace(/[^0-9]/g, '');
+          if (oId === numId) {
+            return {
+              ...o,
+              status: 'Cancelled',
+              order_status: 'cancelled',
+              cancellation_reason: reason
+            };
+          }
+          return o;
+        })
+      );
+      if (emitOrderStatusUpdate) {
+        emitOrderStatusUpdate(numId, 'CANCELLED', reason);
+      }
+      setCancellingOrder(null);
+    } catch (err) {
+      console.error('Failed to cancel order:', err);
+      showToast('Failed to cancel order: ' + (err.message || 'Please try again.'));
+    } finally {
+      setIsCancellingLoading(false);
     }
   };
 
@@ -278,6 +317,11 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
                         <span className={`s-status-badge ${statusInfo.type}`}>
                           {statusInfo.label}
                         </span>
+                        {statusInfo.type === 'cancelled' && (
+                          <div className="seller-cancel-reason-subtext" title={ord.cancellation_reason || 'Cancelled'}>
+                            Reason: <em>{ord.cancellation_reason || 'No reason provided'}</em>
+                          </div>
+                        )}
                       </td>
                       <td className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="table-action-icons-row">
@@ -297,6 +341,15 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
                           <button className="act-icon-btn" title="Track Order" onClick={() => showToast(`Tracking order ${orderDisplayId}`)}>
                             <Truck size={16} />
                           </button>
+                          {statusInfo.type !== 'cancelled' && statusInfo.type !== 'delivered' && (
+                            <button
+                              className="act-icon-btn cancel-icon-btn"
+                              title="Cancel Order"
+                              onClick={() => setCancellingOrder(ord)}
+                            >
+                              <XCircle size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -322,6 +375,16 @@ export default function SellerOrdersPage({ orders: propOrders, onSelectOrder, on
           </div>
         </div>
       </div>
+
+      {/* Cancel Order Reason Modal */}
+      <CancelOrderModal
+        isOpen={Boolean(cancellingOrder)}
+        order={cancellingOrder}
+        isSeller={true}
+        onClose={() => setCancellingOrder(null)}
+        onConfirm={handleConfirmCancelOrder}
+        loading={isCancellingLoading}
+      />
     </div>
   );
 }

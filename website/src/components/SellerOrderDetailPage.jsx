@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import { getImageUrl, tcsTrackingApi, openTcsLabelApi, tcsShipApi } from '../services/api';
+import { useSocket } from '../context/SocketContext';
+import { getImageUrl, tcsTrackingApi, openTcsLabelApi, tcsShipApi, updateSellerOrderStatusApi } from '../services/api';
 import TrackingTimeline from './TrackingTimeline';
+import CancelOrderModal from './CancelOrderModal';
 import {
   Printer,
   CheckCircle2,
@@ -12,15 +14,25 @@ import {
   Truck,
   CreditCard,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  AlertTriangle
 } from 'lucide-react';
 import './SellerOrderDetailPage.css';
 
 export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }) {
   const { showToast } = useCart();
+  const { emitOrderStatusUpdate } = useSocket();
+
+  const [currentOrder, setCurrentOrder] = useState(order);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  useEffect(() => {
+    setCurrentOrder(order);
+  }, [order]);
 
   // Hooks run before the null-order early return below — derive the id safely.
-  const rawOrderId = String(order?.id ?? order?.order_id ?? '');
+  const rawOrderId = String(currentOrder?.id ?? currentOrder?.order_id ?? '');
   const numericId = rawOrderId.replace(/[^0-9]/g, '');
   const [tracking, setTracking] = useState(null);
   const [trackLoading, setTrackLoading] = useState(false);
@@ -40,15 +52,46 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [numericId]);
 
-  if (!order) return null;
+  if (!currentOrder) return null;
 
   // `id` arrives as a number from the API (and may already be formatted by
   // other callers) — normalise to a '#125' style string so .replace() below
   // never runs on a number.
   const orderId = rawOrderId ? (rawOrderId.startsWith('#') ? rawOrderId : `#${rawOrderId}`) : '#ORD-1';
 
+  const statusLower = String(currentOrder.status || currentOrder.order_status || '').toLowerCase();
+  const isCancelled = statusLower.includes('cancel');
+
+  const handleConfirmCancel = async (reason) => {
+    if (!numericId) return;
+    setIsCancelling(true);
+    try {
+      await updateSellerOrderStatusApi(numericId, 'CANCELLED', reason);
+      showToast(`Order #${numericId} has been cancelled`);
+
+      setCurrentOrder((prev) => ({
+        ...prev,
+        status: 'Cancelled',
+        order_status: 'cancelled',
+        cancellation_reason: reason
+      }));
+
+      // Emit real-time status update to buyer
+      if (emitOrderStatusUpdate) {
+        emitOrderStatusUpdate(numericId, 'CANCELLED', reason);
+      }
+
+      setIsCancelModalOpen(false);
+    } catch (err) {
+      console.error('Failed to cancel order:', err);
+      showToast('Failed to cancel order: ' + (err.message || 'Please try again.'));
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const handlePrintLabel = async () => {
-    const cn = tracking?.tcs_cn || order.tcs_cn;
+    const cn = tracking?.tcs_cn || currentOrder.tcs_cn;
     if (!cn) {
       showToast('Not booked with Leopards yet — book shipment first', 'error');
       return;
@@ -92,27 +135,27 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
       minute: '2-digit'
     });
   };
-  const customerName = order.customer || order.customer_name || order.customerName || 'Customer';
-  const customerEmail = order.customer_email || (order.user_email) || 'customer@novanest.com';
-  const customerPhone = order.customer_phone || '+92 300 1234567';
-  const shippingAddress = order.shipping_address || 'Standard Delivery Address';
-  const paymentMethod = order.payment_method || 'Cash on Delivery';
+  const customerName = currentOrder.customer || currentOrder.customer_name || currentOrder.customerName || 'Customer';
+  const customerEmail = currentOrder.customer_email || (currentOrder.user_email) || 'customer@novanest.com';
+  const customerPhone = currentOrder.customer_phone || '+92 300 1234567';
+  const shippingAddress = currentOrder.shipping_address || 'Standard Delivery Address';
+  const paymentMethod = currentOrder.payment_method || 'Cash on Delivery';
   // Card orders are prepaid online; COD orders are collected on delivery.
-  const rawPayStatus = (order.payment_status || '').toLowerCase();
+  const rawPayStatus = (currentOrder.payment_status || '').toLowerCase();
   const isPaid = rawPayStatus === 'paid';
   const paymentStatus = isPaid ? 'Paid' : (rawPayStatus === 'failed' ? 'Failed' : 'Pending');
   const payStatusColor = isPaid ? '#16a34a' : (rawPayStatus === 'failed' ? '#dc2626' : '#d97706');
-  const items = Array.isArray(order.items) && order.items.length > 0 ? order.items : [
+  const items = Array.isArray(currentOrder.items) && currentOrder.items.length > 0 ? currentOrder.items : [
     {
-      name: order.product || order.product_name || 'Product Item',
+      name: currentOrder.product || currentOrder.product_name || 'Product Item',
       quantity: 1,
-      price: order.total || order.total_amount || 0,
-      sku: `SKU-${order.id || '101'}`,
-      main_image: order.image || order.product_img
+      price: currentOrder.total || currentOrder.total_amount || 0,
+      sku: `SKU-${currentOrder.id || '101'}`,
+      main_image: currentOrder.image || currentOrder.product_img
     }
   ];
 
-  const totalAmount = Number(order.total || order.total_amount || 0);
+  const totalAmount = Number(currentOrder.total || currentOrder.total_amount || 0);
 
   return (
     <div className="seller-order-detail-page animate-fade-in">
@@ -133,14 +176,20 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
         </div>
 
         <div className="detail-actions-right">
-          <button className="btn-cancel-order" onClick={() => showToast(`Cancellation initiated for ${orderId}`)}>
-            Cancel Order
-          </button>
-          <button className="btn-outline-dark" onClick={() => onOpenOrderChat ? onOpenOrderChat(order) : showToast(`Opening chat with ${customerName}...`)}>
+          {!isCancelled ? (
+            <button className="btn-cancel-order" onClick={() => setIsCancelModalOpen(true)}>
+              Cancel Order
+            </button>
+          ) : (
+            <span className="order-status-pill cancelled" style={{ alignSelf: 'center' }}>
+              Order Cancelled
+            </span>
+          )}
+          <button className="btn-outline-dark" onClick={() => onOpenOrderChat ? onOpenOrderChat(currentOrder) : showToast(`Opening chat with ${customerName}...`)}>
             Contact Customer
           </button>
-          {!(tracking?.tcs_cn || order.tcs_cn) ? (
-            <button className="btn-ship-tcs" onClick={handleShipWithTcs} disabled={shippingLoading}>
+          {!(tracking?.tcs_cn || currentOrder.tcs_cn) ? (
+            <button className="btn-ship-tcs" onClick={handleShipWithTcs} disabled={shippingLoading || isCancelled}>
               <Truck size={16} />
               <span>{shippingLoading ? 'Booking Leopards...' : 'Ship with Leopards'}</span>
             </button>
@@ -157,9 +206,26 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
       <div className="order-detail-title-banner">
         <div className="title-status-flex">
           <h1 className="order-main-h1">Order {orderId}</h1>
-          <span className={`order-status-pill green`}>{order.status || 'Ready to Ship'}</span>
+          <span className={`order-status-pill ${isCancelled ? 'cancelled' : 'green'}`}>
+            {currentOrder.status || 'Ready to Ship'}
+          </span>
         </div>
-        <p className="order-placed-time">{formatPlacedAt(order.date || order.created_at)}</p>
+        <p className="order-placed-time">{formatPlacedAt(currentOrder.date || currentOrder.created_at)}</p>
+
+        {/* Cancellation Reason Notification on Seller Side */}
+        {isCancelled && (
+          <div className="seller-cancel-banner animate-fade-in">
+            <div className="seller-cancel-banner-icon">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="seller-cancel-banner-content">
+              <h4>Order Cancelled</h4>
+              <p>
+                <strong>Cancellation Reason:</strong> {currentOrder.cancellation_reason || 'No cancellation reason specified.'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 4 Summary KPI Bar Cards */}
@@ -329,6 +395,16 @@ export default function SellerOrderDetailPage({ order, onBack, onOpenOrderChat }
           </div>
         </div>
       </div>
+
+      {/* Cancel Order Reason Modal */}
+      <CancelOrderModal
+        isOpen={isCancelModalOpen}
+        order={currentOrder}
+        isSeller={true}
+        onClose={() => setIsCancelModalOpen(false)}
+        onConfirm={handleConfirmCancel}
+        loading={isCancelling}
+      />
     </div>
   );
 }

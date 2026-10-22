@@ -179,6 +179,57 @@
   border-radius: 20px;
 }
 
+.order-status-pill.cancelled,
+.order-status-pill.red {
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.seller-cancel-banner {
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.seller-cancel-banner-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.seller-cancel-banner-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #991b1b;
+}
+
+.seller-cancel-banner-content p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #7f1d1d;
+  line-height: 1.4;
+}
+
+.seller-cancel-banner-content p strong {
+  color: #991b1b;
+}
+
 .order-placed-time {
   font-size: 0.85rem;
   color: #6b7280;

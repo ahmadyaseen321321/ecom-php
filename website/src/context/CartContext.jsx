@@ -87,6 +87,7 @@ export const CartProvider = ({ children }) => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState('login'); // 'login' | 'signup'
   const [isLoginRequiredOpen, setIsLoginRequiredOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
 
   const openLoginModal = () => {
@@ -242,14 +243,30 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const performLogout = () => {
     setUser(null);
     setWishlist([]);
     setCart([]); // empty the cart so the header badge doesn't linger after logout
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setIsLogoutModalOpen(false);
     setCurrentPage('home');
     showToast('Logged out successfully');
+  };
+
+  const logout = (immediate = false) => {
+    // If immediate is explicitly true, perform logout immediately.
+    // Otherwise (e.g. from UI clicks where event or undefined is passed),
+    // open the confirmation modal.
+    if (immediate === true) {
+      performLogout();
+    } else {
+      setIsLogoutModalOpen(true);
+    }
+  };
+
+  const cancelLogout = () => {
+    setIsLogoutModalOpen(false);
   };
 
   // Patch the logged-in user (name, avatar, phone…) and persist it, so the
@@ -430,9 +447,13 @@ export const CartProvider = ({ children }) => {
         setSelectedProduct,
         lastOrderData,
         setLastOrderData,
+        isLogoutModalOpen,
+        setIsLogoutModalOpen,
         navigateTo,
         login,
         logout,
+        performLogout,
+        cancelLogout,
         updateUser,
         addToCart,
         removeFromCart,

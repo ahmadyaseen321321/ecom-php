@@ -14,6 +14,8 @@ CREATE TABLE `users` (
   `role` enum('user','seller','admin') DEFAULT 'user',
   `status` enum('active','blocked') DEFAULT 'active',
   `email_verified` tinyint(1) NOT NULL DEFAULT 1,
+  `provider` varchar(50) DEFAULT NULL,
+  `provider_id` varchar(255) DEFAULT NULL,
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

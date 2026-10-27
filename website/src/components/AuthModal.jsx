@@ -83,12 +83,22 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         email: socialUser.email,
         full_name: socialUser.name,
         provider_id: socialUser.provider_id,
+        id_token: socialUser.id_token,
       };
       const res = await socialLoginApi(payload);
 
       if (res && (res.status === 'success' || res.token || res.user)) {
+        if (provider === 'google' && mode === 'signup' && res.account_action !== 'created') {
+          setError('An account with this Google account already exists. Please sign in instead.');
+          return;
+        }
+
         login(res.user, res.token);
-        showToast(`Signed in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
+        showToast(
+          provider === 'google' && mode === 'signup'
+            ? 'Google account created and signed in.'
+            : `Signed in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`
+        );
         onClose();
       } else {
         setError(res?.message || `Failed to sign in with ${provider}.`);

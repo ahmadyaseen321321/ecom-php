@@ -57,6 +57,12 @@ Do not put SMTP credentials in PHP files, the frontend `.env`, or committed
 files. Restart Apache after changing its environment. In production, use the
 hosting provider's environment-variable or secret-management settings.
 
+For WAMP, Google's signing keys require a trusted CA bundle for PHP cURL. The
+local virtual host points `CURL_CA_BUNDLE` to WAMP's bundled CA file, and the
+Google token verifier uses it when fetching Google's public signing keys.
+Restart Apache after adding this setting so PHP receives the updated
+environment.
+
 Other SMTP providers supply the equivalent host, port, encryption, sender, and
 authentication settings in their mail settings.
 

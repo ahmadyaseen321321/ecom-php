@@ -7,7 +7,7 @@ import { GOOGLE_CLIENT_ID, FACEBOOK_APP_ID } from '../config/socialAuth';
 // ─── Google Sign-In ────────────────────────────────────────────────
 /**
  * Trigger Google One-Tap / popup sign-in using Google Identity Services.
- * Returns a Promise that resolves with { email, name, sub (provider_id), picture }.
+ * Returns a Promise containing Google's signed identity token.
  */
 export function signInWithGoogle() {
   return new Promise((resolve, reject) => {
@@ -20,19 +20,11 @@ export function signInWithGoogle() {
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: (response) => {
-        try {
-          // Decode the JWT credential returned by Google
-          const payload = decodeJwt(response.credential);
-          resolve({
-            provider: 'google',
-            email: payload.email,
-            name: payload.name || `${payload.given_name || ''} ${payload.family_name || ''}`.trim(),
-            provider_id: payload.sub,
-            picture: payload.picture || null,
-          });
-        } catch (err) {
-          reject(new Error('Failed to decode Google credentials.'));
+        if (!response.credential) {
+          reject(new Error('Google did not return an identity token.'));
+          return;
         }
+        resolve({ provider: 'google', id_token: response.credential });
       },
       auto_select: false,
       cancel_on_tap_outside: true,
@@ -67,7 +59,6 @@ export function signInWithGoogle() {
     });
   });
 }
-
 
 // ─── Facebook Sign-In ──────────────────────────────────────────────
 /**
@@ -113,25 +104,4 @@ export function signInWithFacebook() {
       { scope: 'email,public_profile' }
     );
   });
-}
-
-
-// ─── JWT Decode Helper (no library needed) ─────────────────────────
-/**
- * Decode a JWT token payload. Google GIS returns a credential JWT.
- */
-function decodeJwt(token) {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    throw new Error('Invalid JWT token');
-  }
 }

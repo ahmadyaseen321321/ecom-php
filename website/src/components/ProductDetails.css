@@ -513,38 +513,6 @@
   transform: translateY(-1px);
 }
 
-/* Features Info Bar */
-.features-info-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-top: 18px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.feature-pill {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.feat-icon {
-  color: #283a2e;
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.feature-pill strong {
-  display: block;
-  font-size: 0.84rem;
-  color: #0f172a;
-}
-
-.feature-pill span {
-  font-size: 0.76rem;
-  color: #64748b;
-}
-
 /* ─── Product Details Tabs Section (Description, Specs, Shipping) ─── */
 .product-details-tabs-section {
   background: #ffffff;

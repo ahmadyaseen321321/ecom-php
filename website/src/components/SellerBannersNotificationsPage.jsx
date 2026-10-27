@@ -56,7 +56,7 @@ const SLOT_META = [
 ];
 
 export default function SellerBannersNotificationsPage() {
-  const { showToast } = useCart();
+  const { showToast, user } = useCart();
   const { emitNotification } = useSocket();
 
   // ─── Banner State ───
@@ -317,6 +317,7 @@ export default function SellerBannersNotificationsPage() {
       type: 'promo',
       title: notifSubject,
       message: notifBody,
+      senderId: user?.id || user?.user_id,
       targetRole: notifTarget === 'all' ? null : null,
       targetUserId: notifTarget === 'specific' && selectedUsers.length === 1 ? selectedUsers[0].id : null
     });

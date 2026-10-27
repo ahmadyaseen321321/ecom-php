@@ -9,7 +9,7 @@ $db = $database->getConnection();
 $data = json_decode(file_get_contents("php://input"));
 
 if (!empty($data->email) && !empty($data->password)) {
-    $query = "SELECT u.id, u.full_name, u.email, u.password, u.role, u.status, s.id as seller_id 
+    $query = "SELECT u.id, u.full_name, u.email, u.password, u.role, u.status, u.email_verified, s.id as seller_id
               FROM users u 
               LEFT JOIN sellers s ON u.id = s.user_id
               WHERE u.email = ? LIMIT 1";
@@ -19,6 +19,11 @@ if (!empty($data->email) && !empty($data->password)) {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user && password_verify($data->password, $user['password'])) {
+        if (!(int) $user['email_verified']) {
+            http_response_code(403);
+            echo json_encode(["status" => "error", "message" => "Please verify your email before signing in."]);
+            exit();
+        }
         if ($user['status'] == 'blocked') {
             http_response_code(403);
             echo json_encode(["message" => "Account is blocked"]);

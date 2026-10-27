@@ -13,8 +13,20 @@ CREATE TABLE `users` (
   `profile_pic` varchar(255) DEFAULT NULL,
   `role` enum('user','seller','admin') DEFAULT 'user',
   `status` enum('active','blocked') DEFAULT 'active',
+  `email_verified` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `email_verification_codes` (
+  `user_id` int(11) NOT NULL,
+  `code_hash` varchar(255) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `attempts` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `sent_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_email_verification_user`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 2. Sellers Table

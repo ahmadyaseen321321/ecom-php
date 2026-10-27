@@ -317,10 +317,14 @@ export async function fetchReviews(productId) {
 
 // POST /api/reviews.php
 export async function addReviewApi(productId, rating, comment) {
-  return apiFetch('/api/reviews.php', {
+  const result = await apiFetch('/api/reviews.php', {
     method: 'POST',
     body: JSON.stringify({ product_id: productId, rating, comment }),
   });
+  if (!result || result.status === 'error') {
+    throw new Error(result?.message || 'Unable to submit your review. Please try again.');
+  }
+  return result;
 }
 
 // GET /api/wishlist.php
@@ -438,16 +442,14 @@ export async function registerUser(userData) {
     const data = await response.json();
     console.log('[REGISTER] Status:', response.status, 'Response:', data);
 
-    // Backend may return 200 or 201 on success
-    if ((response.status === 200 || response.status === 201) &&
-        (data.status === 'success' || data.message?.toLowerCase().includes('success'))) {
+    if (response.ok && data.status === 'success') {
       return data;
     }
     console.error('[REGISTER] Failed:', data.message || data);
-    return null;
+    return { _failed: true, message: data.message || 'Unable to create account.' };
   } catch (error) {
     console.error('[REGISTER] Network Error:', error);
-    return null;
+    return { _networkError: true, message: 'Cannot reach the server. Please try again.' };
   }
 }
 
@@ -476,9 +478,9 @@ export async function socialLoginApi(socialData) {
   }
 }
 
-// POST /auth/verify_otp.php
-export async function verifyOtpApi(emailOrPhone, otp) {
-  const url = `${API_BASE_URL}/auth/verify_otp.php`;
+// POST /auth/verify_email.php
+export async function verifyOtpApi(email, otp) {
+  const url = `${API_BASE_URL}/auth/verify_email.php`;
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -486,19 +488,38 @@ export async function verifyOtpApi(emailOrPhone, otp) {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ identifier: emailOrPhone, otp }),
+      body: JSON.stringify({ email, otp }),
     });
     const data = await response.json();
     console.log('[VERIFY_OTP] Status:', response.status, 'Response:', data);
 
-    if (response.ok && (data.status === 'success' || data.verified)) {
+    if (response.ok && data.status === 'success') {
       return data;
     }
-    // Fallback: if backend endpoint doesn't exist yet in dev, treat 6-digit input as valid mock verification
-    return { status: 'success', message: 'OTP verified successfully' };
+    return { _failed: true, message: data.message || 'The verification code is invalid or expired.' };
   } catch (error) {
-    console.warn('[VERIFY_OTP] Network fallback to success mode:', error);
-    return { status: 'success', message: 'OTP verified successfully' };
+    console.error('[VERIFY_OTP] Network Error:', error);
+    return { _networkError: true, message: 'Cannot reach the server. Please try again.' };
+  }
+}
+
+export async function resendEmailVerificationApi(email) {
+  const url = `${API_BASE_URL}/auth/resend_verification.php`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+    const data = await response.json();
+    if (response.ok && data.status === 'success') return data;
+    return { _failed: true, message: data.message || 'Unable to resend the verification code.' };
+  } catch (error) {
+    console.error('[RESEND_VERIFICATION] Network Error:', error);
+    return { _networkError: true, message: 'Cannot reach the server. Please try again.' };
   }
 }
 
@@ -547,11 +568,52 @@ export async function fetchSellerProductsApi() {
   return apiFetch('/api/products.php?seller_id=current');
 }
 
+function productRequestBody(productData) {
+  const colors = productData.variants?.colors || [];
+  const variantImageColors = colors
+    .map((color, index) => color.imageFile ? index : null)
+    .filter((index) => index !== null);
+  const hasMainImageFile = Boolean(productData.imageFile);
+  const variants = productData.variants
+    ? {
+        ...productData.variants,
+        colors: colors.map((color) => {
+          const savedColor = { ...color };
+          delete savedColor.imageFile;
+          delete savedColor.imagePreview;
+          return savedColor;
+        })
+      }
+    : undefined;
+
+  if (variantImageColors.length === 0 && !hasMainImageFile) {
+    const jsonData = { ...productData, variants };
+    delete jsonData.imageFile;
+    return JSON.stringify(jsonData);
+  }
+
+  const formData = new FormData();
+  const { imageFile, image, ...fields } = productData;
+  Object.entries(fields).forEach(([key, value]) => {
+    if (key !== 'variants' && value !== undefined && value !== null) {
+      formData.append(key, String(value));
+    }
+  });
+  if (!hasMainImageFile && image) formData.append('image', image);
+  if (hasMainImageFile) formData.append('images[]', imageFile);
+  formData.append('variants', JSON.stringify(variants));
+  variantImageColors.forEach((colorIndex) => {
+    formData.append('variant_images[]', colors[colorIndex].imageFile);
+  });
+  formData.append('variant_image_indexes', JSON.stringify(variantImageColors));
+  return formData;
+}
+
 // POST /api/products.php (Create Product)
 export async function addSellerProductApi(productData) {
   return apiFetch('/api/products.php', {
     method: 'POST',
-    body: JSON.stringify(productData),
+    body: productRequestBody(productData),
   });
 }
 
@@ -566,7 +628,7 @@ export async function deleteSellerProductApi(productId) {
 export async function updateSellerProductApi(productId, productData) {
   return apiFetch(`/api/products.php?id=${productId}`, {
     method: 'PUT',
-    body: JSON.stringify({ id: productId, ...productData }),
+    body: productRequestBody({ id: productId, ...productData }),
   });
 }
 
@@ -826,5 +888,3 @@ export async function downloadInvoiceApi(orderId) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
-
-

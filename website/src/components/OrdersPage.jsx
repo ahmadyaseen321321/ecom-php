@@ -390,8 +390,9 @@ export default function OrdersPage() {
     if (e) e.stopPropagation();
     setReviewingOrder(order);
     const items = Array.isArray(order.items) ? order.items : [];
-    if (items.length > 0) {
-      setSelectedProductToReview(items[0]);
+    const eligibleItems = items.filter((item) => !item.user_rating);
+    if (eligibleItems.length > 0) {
+      setSelectedProductToReview(eligibleItems[0]);
     }
     setReviewRating(5);
     setReviewComment('');
@@ -414,8 +415,7 @@ export default function OrdersPage() {
       showToast('Thank you! Review submitted successfully.');
       handleCloseReviewModal();
     } catch (err) {
-      showToast('Review saved.');
-      handleCloseReviewModal();
+      showToast(err.message || 'Unable to submit your review. Please try again.');
     } finally {
       setSubmittingReview(false);
     }
@@ -851,7 +851,8 @@ export default function OrdersPage() {
               const orderTotal = Number(order.total ?? order.total_amount ?? order.total_price ?? 0);
               const rawStatus = (order.status || order.order_status || 'processing').trim();
               const statusLower = rawStatus.toLowerCase();
-              const isDelivered = statusLower.includes('deliver') || statusLower.includes('complete');
+              const isDelivered = statusLower === 'delivered';
+              const hasUnreviewedItems = (order.items || []).some((item) => !item.user_rating);
               const isInTransit = statusLower.includes('transit') || statusLower.includes('shipped');
               const isProcessing = statusLower.includes('processing') || statusLower.includes('pending') || statusLower.includes('confirmed') || statusLower.includes('paid') || statusLower.includes('hold');
               const isCancelled = statusLower.includes('cancel') || statusLower.includes('fail') || statusLower.includes('refund');
@@ -897,12 +898,14 @@ export default function OrdersPage() {
                   <div className="card-action-buttons">
                     {isDelivered ? (
                       <>
-                        <button
-                          className="btn-outline"
-                          onClick={(e) => handleOpenReviewModal(order, e)}
-                        >
-                          Write a Review
-                        </button>
+                        {hasUnreviewedItems && (
+                          <button
+                            className="btn-outline"
+                            onClick={(e) => handleOpenReviewModal(order, e)}
+                          >
+                            Write a Review
+                          </button>
+                        )}
                         <button
                           className="btn-green-fill"
                           onClick={() => setSelectedOrderDetails(order)}
@@ -987,7 +990,7 @@ export default function OrdersPage() {
             </div>
 
             <form onSubmit={handleSubmitReview} className="modal-review-form">
-              {reviewingOrder.items && reviewingOrder.items.length > 1 && (
+              {reviewingOrder.items?.filter((item) => !item.user_rating).length > 1 && (
                 <div className="item-select-section">
                   <label>Select Item to Review:</label>
                   <select
@@ -998,7 +1001,7 @@ export default function OrdersPage() {
                       if (sel) setSelectedProductToReview(sel);
                     }}
                   >
-                    {reviewingOrder.items.map((it, i) => (
+                    {reviewingOrder.items.filter((item) => !item.user_rating).map((it, i) => (
                       <option key={i} value={it.id}>
                         {it.name}
                       </option>

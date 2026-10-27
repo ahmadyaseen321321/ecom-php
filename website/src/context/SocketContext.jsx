@@ -4,11 +4,14 @@ import { useCart } from './CartContext';
 
 const SocketContext = createContext();
 
-// Socket server URL configuration — only connect if explicitly set via env variable
-const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || null;
+// Use the local socket server by default during development; production requires explicit configuration.
+const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL
+  || (import.meta.env.DEV ? 'http://localhost:4000' : null);
 
 export const SocketProvider = ({ children }) => {
   const { user, navigateTo, showToast } = useCart();
+  const userRef = useRef(user);
+  userRef.current = user;
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState(() => {
@@ -134,6 +137,21 @@ export const SocketProvider = ({ children }) => {
 
       // Listen for incoming notifications
       socketInstance.on('new_notification', (notif) => {
+        const currentUser = userRef.current;
+        const currentUserId = currentUser?.id || currentUser?.user_id;
+        const senderId = notif.senderId || notif.sender_id;
+        const userRole = String(currentUser?.role || '').toLowerCase();
+        const isSeller = userRole === 'seller'
+          || currentUser?.is_seller === true
+          || currentUser?.is_seller === 1
+          || currentUser?.is_seller === '1';
+        if (isSeller && (notif.type || '').toLowerCase() === 'promo') {
+          return;
+        }
+        if (currentUserId && senderId && String(currentUserId) === String(senderId)) {
+          return;
+        }
+
         console.log('[SocketContext] Real-time notification received:', notif);
         const enrichedNotif = {
           id: notif.id || `notif_${Date.now()}`,
@@ -298,7 +316,10 @@ export const SocketProvider = ({ children }) => {
 
   const emitNotification = (data) => {
     if (!socket) return;
-    socket.emit('send_notification', data);
+    socket.emit('send_notification', {
+      ...data,
+      senderId: user?.id || user?.user_id
+    });
   };
 
   const joinOrder = (orderId) => {

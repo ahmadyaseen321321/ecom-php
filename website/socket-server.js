@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
   socket.on('authenticate', (userData) => {
     if (!userData) return;
     const userId = String(userData.id || userData.user_id || userData.userId || '');
-    const role = userData.role || (userData.is_seller ? 'seller' : 'customer');
+    const role = String(userData.role || (userData.is_seller ? 'seller' : 'customer')).toLowerCase();
 
     if (userId) {
       socket.userId = userId;
@@ -310,22 +310,30 @@ io.on('connection', (socket) => {
   // 4. Custom/Broadcast Notification Handler
   socket.on('send_notification', (data) => {
     if (!data) return;
+    const senderId = socket.userId || data.senderId || data.sender_id;
+    const senderRoom = senderId ? `user_${senderId}` : null;
     const notif = {
       id: data.id || `notif_${Date.now()}`,
       type: data.type || 'promo',
       title: data.title || 'Notification',
       message: data.message || '',
       created_at: new Date().toISOString(),
-      ...data
+      ...data,
+      senderId
     };
 
     if (data.targetUserId) {
+      if (senderId && String(data.targetUserId) === String(senderId)) return;
       io.to(`user_${data.targetUserId}`).emit('new_notification', notif);
     } else if (data.targetRole) {
-      io.to(data.targetRole).emit('new_notification', notif);
+      let recipients = io.to(data.targetRole);
+      if (senderRoom) recipients = recipients.except(senderRoom);
+      recipients.emit('new_notification', notif);
     } else {
-      // Global broadcast
-      io.emit('new_notification', notif);
+      // Promotional broadcasts are for customers, not the seller sending them.
+      let customers = io.to('customers');
+      if (senderRoom) customers = customers.except(senderRoom);
+      customers.emit('new_notification', notif);
     }
   });
 

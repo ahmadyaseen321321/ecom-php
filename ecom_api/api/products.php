@@ -184,6 +184,11 @@ if ($method === 'POST') {
             "message" => "CRITICAL: Ambiguous request. Edit data received on Create route.",
         ]));
     }
+    $description = $requestParams['description'] ?? '';
+    if (!is_string($description) || trim($description) === '') {
+        http_response_code(400);
+        die(json_encode(["status" => "error", "message" => "Product description is required."]));
+    }
 
     try {
         $stmt = $db->prepare("SELECT id FROM sellers WHERE user_id = :uid");
@@ -257,6 +262,10 @@ if ($method === 'POST') {
             if (isset($_FILES['variant_images'])) {
                 $vFiles = $_FILES['variant_images'];
                 $vCount = is_array($vFiles['name']) ? count($vFiles['name']) : 1;
+                $variantIndexes = json_decode($requestParams['variant_image_indexes'] ?? '[]', true) ?? [];
+                $variantData = is_array($requestParams['variants'] ?? null)
+                    ? $requestParams['variants']
+                    : (json_decode($variants, true) ?? []);
                 for ($i = 0; $i < $vCount; $i++) {
                     $tmpName = is_array($vFiles['tmp_name']) ? $vFiles['tmp_name'][$i] : $vFiles['tmp_name'];
                     $name = is_array($vFiles['name']) ? $vFiles['name'][$i] : $vFiles['name'];
@@ -267,9 +276,15 @@ if ($method === 'POST') {
                             $imageUrl = "uploads/products/" . $newName;
                             $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 0)");
                             $imgStmt->execute([$productId, $imageUrl]);
+                            $colorIndex = isset($variantIndexes[$i]) ? (int)$variantIndexes[$i] : -1;
+                            if (isset($variantData['colors'][$colorIndex])) {
+                                $variantData['colors'][$colorIndex]['image'] = $imageUrl;
+                            }
                         }
                     }
                 }
+                $db->prepare("UPDATE products SET variants = ? WHERE id = ?")
+                    ->execute([json_encode($variantData), $productId]);
             }
 
             $db->commit();
@@ -312,9 +327,14 @@ if ($method === 'PUT' || $method === 'PATCH') {
             die(json_encode(["status" => "error", "message" => "Permission Denied: Product not found or not owned by you."]));
         }
 
-        $db->beginTransaction();
-
         $body = !empty($bodyData) ? $bodyData : $requestParams;
+        $description = $body['description'] ?? $row['description'] ?? '';
+        if (!is_string($description) || trim($description) === '') {
+            http_response_code(400);
+            die(json_encode(["status" => "error", "message" => "Product description is required."]));
+        }
+
+        $db->beginTransaction();
 
         $cat = array_key_exists('category_id', $body) ? (int) $body['category_id'] : (int) $row['category_id'];
         $name = array_key_exists('name', $body) ? $body['name'] : $row['name'];
@@ -322,6 +342,9 @@ if ($method === 'PUT' || $method === 'PATCH') {
         $price = array_key_exists('price', $body) ? $body['price'] : $row['price'];
         $stock = array_key_exists('stock', $body) ? (int) $body['stock'] : (int) $row['stock'];
         $status = array_key_exists('status', $body) ? $body['status'] : ($row['status'] ?? 'active');
+        $variants = array_key_exists('variants', $body)
+            ? (is_string($body['variants']) ? $body['variants'] : json_encode($body['variants']))
+            : $row['variants'];
 
         if (array_key_exists('discount_price', $body)) {
             $dp = $body['discount_price'];
@@ -330,7 +353,7 @@ if ($method === 'PUT' || $method === 'PATCH') {
             $disc = $row['discount_price'];
         }
 
-        $sql = "UPDATE products SET category_id = :cat, name = :name, description = :desc, price = :price, discount_price = :disc, stock = :stock, status = :status WHERE id = :id";
+        $sql = "UPDATE products SET category_id = :cat, name = :name, description = :desc, price = :price, discount_price = :disc, stock = :stock, variants = :variants, status = :status WHERE id = :id";
         $stmt = $db->prepare($sql);
         $stmt->bindValue(':cat', $cat, PDO::PARAM_INT);
         $stmt->bindValue(':name', $name, PDO::PARAM_STR);
@@ -338,6 +361,7 @@ if ($method === 'PUT' || $method === 'PATCH') {
         $stmt->bindValue(':price', $price);
         $stmt->bindValue(':disc', $disc !== null && $disc !== '' ? $disc : null);
         $stmt->bindValue(':stock', $stock, PDO::PARAM_INT);
+        $stmt->bindValue(':variants', $variants);
         $stmt->bindValue(':status', $status, PDO::PARAM_STR);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
@@ -346,9 +370,64 @@ if ($method === 'PUT' || $method === 'PATCH') {
         // Update / Insert image URL if provided in JSON
         if (!empty($body['image']) || !empty($body['image_url'])) {
             $imgUrl = !empty($body['image']) ? $body['image'] : $body['image_url'];
+            $existingImage = $db->prepare("SELECT id FROM product_images WHERE product_id = ? AND image_url = ? ORDER BY is_main DESC, id ASC LIMIT 1");
+            $existingImage->execute([$id, $imgUrl]);
+            $existingImageId = $existingImage->fetchColumn();
             $db->prepare("UPDATE product_images SET is_main = 0 WHERE product_id = ?")->execute([$id]);
-            $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 1)");
-            $imgStmt->execute([$id, $imgUrl]);
+            if ($existingImageId) {
+                $db->prepare("UPDATE product_images SET is_main = 1 WHERE id = ?")->execute([$existingImageId]);
+            } else {
+                $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 1)");
+                $imgStmt->execute([$id, $imgUrl]);
+            }
+        }
+
+        if (isset($_FILES['images'])) {
+            $uploadDir = "../uploads/products/";
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+            $files = $_FILES['images'];
+            $count = is_array($files['name']) ? count($files['name']) : 1;
+            for ($i = 0; $i < $count; $i++) {
+                $tmpName = is_array($files['tmp_name']) ? $files['tmp_name'][$i] : $files['tmp_name'];
+                $name = is_array($files['name']) ? $files['name'][$i] : $files['name'];
+                if ($tmpName) {
+                    $ext = pathinfo($name, PATHINFO_EXTENSION);
+                    $newName = uniqid('prod_upd_') . '_' . $i . '.' . $ext;
+                    if (move_uploaded_file($tmpName, $uploadDir . $newName)) {
+                        $db->prepare("UPDATE product_images SET is_main = 0 WHERE product_id = ? AND image_url NOT LIKE '%var_%'")->execute([$id]);
+                        $imageUrl = "uploads/products/" . $newName;
+                        $imgStmt = $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 1)");
+                        $imgStmt->execute([$id, $imageUrl]);
+                    }
+                }
+            }
+        }
+
+        if (isset($_FILES['variant_images'])) {
+            $uploadDir = "../uploads/products/";
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+            $vFiles = $_FILES['variant_images'];
+            $vCount = is_array($vFiles['name']) ? count($vFiles['name']) : 1;
+            $variantIndexes = json_decode($body['variant_image_indexes'] ?? '[]', true) ?? [];
+            $variantData = json_decode($variants, true) ?? [];
+            for ($i = 0; $i < $vCount; $i++) {
+                $tmpName = is_array($vFiles['tmp_name']) ? $vFiles['tmp_name'][$i] : $vFiles['tmp_name'];
+                $name = is_array($vFiles['name']) ? $vFiles['name'][$i] : $vFiles['name'];
+                if ($tmpName) {
+                    $ext = pathinfo($name, PATHINFO_EXTENSION);
+                    $newName = uniqid('var_') . '_' . $i . '.' . $ext;
+                    if (move_uploaded_file($tmpName, $uploadDir . $newName)) {
+                        $imageUrl = "uploads/products/" . $newName;
+                        $db->prepare("INSERT INTO product_images (product_id, image_url, is_main) VALUES (?, ?, 0)")->execute([$id, $imageUrl]);
+                        $colorIndex = isset($variantIndexes[$i]) ? (int)$variantIndexes[$i] : -1;
+                        if (isset($variantData['colors'][$colorIndex])) {
+                            $variantData['colors'][$colorIndex]['image'] = $imageUrl;
+                        }
+                    }
+                }
+            }
+            $variants = json_encode($variantData);
+            $db->prepare("UPDATE products SET variants = ? WHERE id = ?")->execute([$variants, $id]);
         }
 
         // Handle image removals/additions

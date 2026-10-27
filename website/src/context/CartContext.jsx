@@ -3,6 +3,27 @@ import { fetchProducts, fetchCategories, getImageUrl, normalizeCategory, fetchWi
 
 const CartContext = createContext();
 
+function parseProductVariants(value) {
+  if (!value) return { colors: [], sizes: [], specifications: [] };
+  let variants = value;
+  if (typeof variants === 'string') {
+    try {
+      variants = JSON.parse(variants);
+    } catch {
+      return { colors: [], sizes: [], specifications: [] };
+    }
+  }
+  if (Array.isArray(variants)) {
+    return { colors: variants, sizes: [], specifications: [] };
+  }
+  return {
+    ...variants,
+    colors: Array.isArray(variants.colors) ? variants.colors : [],
+    sizes: Array.isArray(variants.sizes) ? variants.sizes : [],
+    specifications: Array.isArray(variants.specifications) ? variants.specifications : []
+  };
+}
+
 export const CartProvider = ({ children }) => {
   // ─── Live data from API ───────────────────────────────────
   const [liveProducts, setLiveProducts] = useState([]);
@@ -39,6 +60,7 @@ export const CartProvider = ({ children }) => {
               description: p.description || '',
               category: p.category_name || '',
               categoryId: String(p.category_id),
+              variants: parseProductVariants(p.variants),
               price: hasDiscount ? rawDiscount : rawPrice,
               originalPrice: hasDiscount ? rawPrice : null,
               image: getImageUrl(p.main_image),

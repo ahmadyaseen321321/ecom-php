@@ -44,7 +44,7 @@ if ($method == 'GET') {
                                          JOIN order_items oi ON o.id = oi.order_id 
                                          WHERE o.user_id = :u_id 
                                            AND oi.product_id = :p_id 
-                                           AND (LOWER(o.order_status) IN ('delivered', 'completed') OR LOWER(o.status) IN ('delivered', 'completed'))";
+                                           AND LOWER(TRIM(o.order_status)) = 'delivered'";
                     $eligStmt = $db->prepare($eligibilityQuery);
                     $eligStmt->bindParam(':u_id', $tokenUserId);
                     $eligStmt->bindParam(':p_id', $product_id);
@@ -108,32 +108,13 @@ if ($method == 'GET') {
         $image_url = null;
 
         try {
-            if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-                $target_dir = "../uploads/reviews/";
-                if (!is_dir($target_dir)) {
-                    @mkdir($target_dir, 0777, true);
-                }
-
-                $file_ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
-                $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
-
-                if (in_array($file_ext, $allowed_exts)) {
-                    $file_name = uniqid('rev_') . '.' . $file_ext;
-                    $target_file = $target_dir . $file_name;
-
-                    if (move_uploaded_file($_FILES['image']['tmp_name'], $target_file)) {
-                        $image_url = "uploads/reviews/" . $file_name;
-                    }
-                }
-            }
-
             // Verify that the user has ordered this product and it was successfully delivered
             $orderCheckQuery = "SELECT COUNT(*) as count 
                                 FROM orders o 
                                 JOIN order_items oi ON o.id = oi.order_id 
                                 WHERE o.user_id = :user_id 
                                   AND oi.product_id = :product_id 
-                                  AND (LOWER(o.order_status) IN ('delivered', 'completed') OR LOWER(o.status) IN ('delivered', 'completed'))";
+                                  AND LOWER(TRIM(o.order_status)) = 'delivered'";
             $orderCheckStmt = $db->prepare($orderCheckQuery);
             $orderCheckStmt->bindParam(':user_id', $userId);
             $orderCheckStmt->bindParam(':product_id', $product_id);
@@ -148,6 +129,40 @@ if ($method == 'GET') {
                     "message" => "You can only write a review for products you have purchased and received."
                 ]);
                 exit();
+            }
+
+            $existingReviewStmt = $db->prepare("SELECT 1 FROM reviews WHERE user_id = :user_id AND product_id = :product_id LIMIT 1");
+            $existingReviewStmt->execute([
+                ':user_id' => $userId,
+                ':product_id' => $product_id
+            ]);
+            if ($existingReviewStmt->fetchColumn()) {
+                http_response_code(409);
+                header("Content-Type: application/json; charset=UTF-8");
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "You have already reviewed this product."
+                ]);
+                exit();
+            }
+
+            if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
+                $target_dir = "../uploads/reviews/";
+                if (!is_dir($target_dir)) {
+                    @mkdir($target_dir, 0777, true);
+                }
+
+                $file_ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+                $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
+
+                if (in_array($file_ext, $allowed_exts, true)) {
+                    $file_name = uniqid('rev_') . '.' . $file_ext;
+                    $target_file = $target_dir . $file_name;
+
+                    if (move_uploaded_file($_FILES['image']['tmp_name'], $target_file)) {
+                        $image_url = "uploads/reviews/" . $file_name;
+                    }
+                }
             }
 
             $query = "INSERT INTO reviews (user_id, product_id, rating, comment, image_url) VALUES (:user_id, :product_id, :rating, :comment, :image_url)";

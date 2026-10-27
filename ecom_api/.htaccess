@@ -18,6 +18,11 @@
 # Basic security - Hide directory listings
 Options -Indexes
 
+# Keep Composer dependencies private from direct web requests.
+<IfModule mod_rewrite.c>
+    RewriteRule ^vendor/ - [F,L]
+</IfModule>
+
 # CORS Support
 <IfModule mod_headers.c>
     Header set Access-Control-Allow-Origin "*"

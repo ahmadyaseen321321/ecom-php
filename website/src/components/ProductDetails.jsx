@@ -1,34 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
-import { fetchReviews, addReviewApi, getImageUrl } from '../services/api';
+import { fetchReviews, getImageUrl } from '../services/api';
 import {
   Star,
   ShoppingBag,
   Heart,
   ChevronRight,
   ArrowLeft,
-  RotateCcw,
-  Truck,
-  ShieldCheck,
   ThumbsUp,
-  Send,
   Loader2,
   Check,
   Store,
-  MessageSquarePlus,
   Share2,
   Info,
-  CheckCircle2,
-  X
+  CheckCircle2
 } from 'lucide-react';
 import './ProductDetails.css';
 
 const DEFAULT_PRODUCT = {
   id: '1',
-  name: 'Minimalist Silk Shirt',
-  category: 'Apparel',
+  name: 'Product',
+  category: '',
   price: 128.00,
-  description: 'Crafted from 100% premium mulberry silk, this minimalist shirt offers an effortlessly elegant drape and a luxurious feel. Sustainable materials meet timeless design for the perfect wardrobe staple.',
+  description: '',
   image: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=800&auto=format&fit=crop&q=80',
   allImages: [
     'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=800&auto=format&fit=crop&q=80',
@@ -63,13 +57,33 @@ function getInitials(name) {
   return name.trim().split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
 }
 
+function getProductVariants(value) {
+  if (!value) return { colors: [], sizes: [], specifications: [] };
+  let variants = value;
+  if (typeof variants === 'string') {
+    try {
+      variants = JSON.parse(variants);
+    } catch {
+      return { colors: [], sizes: [], specifications: [] };
+    }
+  }
+  if (Array.isArray(variants)) {
+    return { colors: variants, sizes: [], specifications: [] };
+  }
+  return {
+    colors: Array.isArray(variants.colors) ? variants.colors : [],
+    sizes: Array.isArray(variants.sizes) ? variants.sizes : [],
+    specifications: Array.isArray(variants.specifications) ? variants.specifications : []
+  };
+}
+
 export default function ProductDetails() {
-  const { selectedProduct, addToCart, wishlist, toggleWishlist, navigateTo, showToast, user } = useCart();
+  const { selectedProduct, addToCart, wishlist, toggleWishlist, navigateTo, showToast } = useCart();
   const product = selectedProduct || DEFAULT_PRODUCT;
 
   const [selectedImage, setSelectedImage] = useState(product.image || product.allImages?.[0]);
   const [selectedColor, setSelectedColor] = useState(0);
-  const [selectedSize, setSelectedSize] = useState('S');
+  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description'); // 'description' | 'specs' | 'shipping'
 
@@ -77,14 +91,6 @@ export default function ProductDetails() {
   const [reviewsList, setReviewsList] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
-  const [canReviewProduct, setCanReviewProduct] = useState(false);
-  const [hasReviewedProduct, setHasReviewedProduct] = useState(false);
-
-  // Review submission modal state
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [newReviewRating, setNewReviewRating] = useState(5);
-  const [newReviewComment, setNewReviewComment] = useState('');
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const isLiked = wishlist && wishlist.some((item) => String(item.id) === String(product.id));
 
@@ -94,8 +100,6 @@ export default function ProductDetails() {
   const loadReviewsData = () => {
     if (!selectedProductId) {
       setReviewsList([]);
-      setCanReviewProduct(false);
-      setHasReviewedProduct(false);
       setReviewsLoading(false);
       return;
     }
@@ -105,23 +109,15 @@ export default function ProductDetails() {
       .then((res) => {
         if (res && typeof res === 'object' && 'reviews' in res) {
           setReviewsList(Array.isArray(res.reviews) ? res.reviews : []);
-          setCanReviewProduct(Boolean(res.canReview));
-          setHasReviewedProduct(Boolean(res.hasReviewed));
         } else if (Array.isArray(res)) {
           setReviewsList(res);
-          setCanReviewProduct(false);
-          setHasReviewedProduct(false);
         } else {
           setReviewsList([]);
-          setCanReviewProduct(false);
-          setHasReviewedProduct(false);
         }
       })
       .catch((err) => {
         console.error('[Reviews] error:', err);
         setReviewsList([]);
-        setCanReviewProduct(false);
-        setHasReviewedProduct(false);
       })
       .finally(() => {
         setReviewsLoading(false);
@@ -130,7 +126,7 @@ export default function ProductDetails() {
 
   useEffect(() => {
     loadReviewsData();
-  }, [selectedProductId, user]);
+  }, [selectedProductId]);
 
   useEffect(() => {
     if (product) {
@@ -166,13 +162,23 @@ export default function ProductDetails() {
 
   const visibleReviews = showAllReviews ? reviewsList : reviewsList.slice(0, 3);
 
-  const colors = [
-    { name: 'Olive Green', value: '#758A60' },
-    { name: 'Dark Navy', value: '#1F2937' },
-    { name: 'Light Blue', value: '#C5D6E8' }
-  ];
+  const variants = getProductVariants(product.variants);
+  const colors = variants.colors.map((color) => (
+    typeof color === 'string' ? { name: color } : color
+  )).filter((color) => color.name);
+  const categoryName = product.category || '';
+  const hasSizeCategory = /apparel|clothing|garment|fashion|footwear|shoe/i.test(categoryName);
+  const sizes = hasSizeCategory
+    ? variants.sizes.map((size) => typeof size === 'string' ? size : size.name).filter(Boolean)
+    : [];
+  const firstSize = sizes[0] || '';
+  const specifications = variants.specifications.filter((spec) => spec?.name && spec?.value);
 
-  const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+  useEffect(() => {
+    setSelectedColor(0);
+    setSelectedSize(firstSize);
+    setActiveTab(product.description ? 'description' : 'shipping');
+  }, [product.id, product.description, firstSize]);
 
   const handleShare = () => {
     if (navigator.clipboard) {
@@ -180,39 +186,6 @@ export default function ProductDetails() {
       showToast('Product link copied to clipboard!');
     } else {
       showToast('Link ready to share!');
-    }
-  };
-
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-    if (!newReviewComment.trim()) {
-      showToast('Please enter your review feedback', 'error');
-      return;
-    }
-
-    setIsSubmittingReview(true);
-    try {
-      const res = await addReviewApi(product.id, newReviewRating, newReviewComment.trim());
-      if (res && res.status !== 'error') {
-        showToast('Thank you! Your review was submitted successfully.');
-        setIsReviewModalOpen(false);
-        setNewReviewComment('');
-        setNewReviewRating(5);
-        loadReviewsData();
-      } else {
-        showToast(res?.message || 'Review submitted!');
-        setIsReviewModalOpen(false);
-        setNewReviewComment('');
-        loadReviewsData();
-      }
-    } catch (err) {
-      console.error('Error submitting review:', err);
-      showToast('Review submitted successfully!');
-      setIsReviewModalOpen(false);
-      setNewReviewComment('');
-      loadReviewsData();
-    } finally {
-      setIsSubmittingReview(false);
     }
   };
 
@@ -310,6 +283,7 @@ export default function ProductDetails() {
             </div>
 
             {/* Color Selector */}
+            {colors.length > 0 && (
             <div className="selector-block">
               <label>
                 SELECT COLOR: <strong>{colors[selectedColor]?.name}</strong>
@@ -319,15 +293,25 @@ export default function ProductDetails() {
                   <button
                     key={i}
                     className={`color-dot-btn ${selectedColor === i ? 'active' : ''}`}
-                    style={{ backgroundColor: c.value }}
-                    onClick={() => setSelectedColor(i)}
+                    style={{ backgroundColor: c.hex || c.color || '#e5e7eb' }}
+                    onClick={() => {
+                      setSelectedColor(i);
+                      setSelectedImage(
+                        c.image
+                          ? getImageUrl(c.image)
+                          : getImageUrl(product.image || product.allImages?.[0])
+                      );
+                    }}
                     title={c.name}
+                    aria-label={`Select ${c.name}`}
                   />
                 ))}
               </div>
             </div>
+            )}
 
             {/* Size Selector */}
+            {sizes.length > 0 && (
             <div className="selector-block">
               <div className="label-with-link">
                 <label>SELECT SIZE</label>
@@ -350,6 +334,7 @@ export default function ProductDetails() {
                 ))}
               </div>
             </div>
+            )}
 
             {/* Quantity Selector */}
             <div className="quantity-select-block">
@@ -398,48 +383,28 @@ export default function ProductDetails() {
               </button>
             </div>
 
-            {/* Features Row */}
-            <div className="features-info-bar">
-              <div className="feature-pill">
-                <Truck size={17} className="feat-icon" />
-                <div>
-                  <strong>Free Express Shipping</strong>
-                  <span>On all orders across Pakistan</span>
-                </div>
-              </div>
-              <div className="feature-pill">
-                <RotateCcw size={17} className="feat-icon" />
-                <div>
-                  <strong>30-Day Easy Returns</strong>
-                  <span>Hassle-free guarantee</span>
-                </div>
-              </div>
-              <div className="feature-pill">
-                <ShieldCheck size={17} className="feat-icon" />
-                <div>
-                  <strong>Authentic Product</strong>
-                  <span>100% verified merchant quality</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Product Overview, Details & Specifications Section */}
         <section className="product-details-tabs-section">
           <div className="product-tab-headers">
-            <button
-              className={`product-tab-btn ${activeTab === 'description' ? 'active' : ''}`}
-              onClick={() => setActiveTab('description')}
-            >
-              Description
-            </button>
-            <button
-              className={`product-tab-btn ${activeTab === 'specs' ? 'active' : ''}`}
-              onClick={() => setActiveTab('specs')}
-            >
-              Specifications
-            </button>
+            {product.description?.trim() && (
+              <button
+                className={`product-tab-btn ${activeTab === 'description' ? 'active' : ''}`}
+                onClick={() => setActiveTab('description')}
+              >
+                Description
+              </button>
+            )}
+            {specifications.length > 0 && (
+              <button
+                className={`product-tab-btn ${activeTab === 'specs' ? 'active' : ''}`}
+                onClick={() => setActiveTab('specs')}
+              >
+                Specifications
+              </button>
+            )}
             <button
               className={`product-tab-btn ${activeTab === 'shipping' ? 'active' : ''}`}
               onClick={() => setActiveTab('shipping')}
@@ -449,56 +414,21 @@ export default function ProductDetails() {
           </div>
 
           <div className="product-tab-panel">
-            {activeTab === 'description' && (
+            {activeTab === 'description' && product.description?.trim() && (
               <div className="tab-description-content animate-fade-in">
-                <p className="tab-main-paragraph">
-                  {product.description ||
-                    'Engineered for premium performance and timeless everyday aesthetics. Thoughtfully crafted with meticulous attention to detail, using high-grade materials that provide lasting comfort and distinctive style.'}
-                </p>
-                <div className="description-highlights-grid">
-                  <div className="highlight-item">
-                    <CheckCircle2 size={16} className="highlight-icon" />
-                    <span>Handcrafted finishes & reinforced construction</span>
-                  </div>
-                  <div className="highlight-item">
-                    <CheckCircle2 size={16} className="highlight-icon" />
-                    <span>Hypoallergenic, breathable fabric blend</span>
-                  </div>
-                  <div className="highlight-item">
-                    <CheckCircle2 size={16} className="highlight-icon" />
-                    <span>Pre-shrunk to retain exact tailoring through washes</span>
-                  </div>
-                  <div className="highlight-item">
-                    <CheckCircle2 size={16} className="highlight-icon" />
-                    <span>Eco-conscious packaging & verified ethical supply</span>
-                  </div>
-                </div>
+                <p className="tab-main-paragraph">{product.description}</p>
               </div>
             )}
 
-            {activeTab === 'specs' && (
+            {activeTab === 'specs' && specifications.length > 0 && (
               <div className="tab-specs-content animate-fade-in">
                 <div className="specs-table">
-                  <div className="spec-row">
-                    <span className="spec-label">Category</span>
-                    <span className="spec-value">{product.category || 'Apparel & Lifestyle'}</span>
-                  </div>
-                  <div className="spec-row">
-                    <span className="spec-label">Material</span>
-                    <span className="spec-value">Premium Mulberry Silk & Organic Cotton blend</span>
-                  </div>
-                  <div className="spec-row">
-                    <span className="spec-label">Fit</span>
-                    <span className="spec-value">True to size, modern tailored drape</span>
-                  </div>
-                  <div className="spec-row">
-                    <span className="spec-label">Care Instructions</span>
-                    <span className="spec-value">Gentle cold wash, air dry recommended, iron at low temp</span>
-                  </div>
-                  <div className="spec-row">
-                    <span className="spec-label">Origin</span>
-                    <span className="spec-value">Crafted in certified sustainable partner ateliers</span>
-                  </div>
+                  {specifications.map((spec, index) => (
+                    <div className="spec-row" key={`${spec.name}-${index}`}>
+                      <span className="spec-label">{spec.name}</span>
+                      <span className="spec-value">{spec.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -531,17 +461,6 @@ export default function ProductDetails() {
               <h2 className="reviews-section-title">Customer Feedback & Reviews</h2>
               <p className="reviews-section-subtitle">Real experiences shared by verified Novanest customers</p>
             </div>
-            {canReviewProduct ? (
-              <button className="write-review-btn" onClick={() => setIsReviewModalOpen(true)}>
-                <MessageSquarePlus size={16} />
-                <span>Write a Review</span>
-              </button>
-            ) : hasReviewedProduct ? (
-              <span className="reviewed-badge-pill">
-                <CheckCircle2 size={15} />
-                <span>Reviewed</span>
-              </span>
-            ) : null}
           </div>
 
           {reviewsLoading ? (
@@ -555,13 +474,6 @@ export default function ProductDetails() {
                 <Star size={32} />
               </div>
               <h3>No reviews yet for this product</h3>
-              <p>Reviews can only be submitted by verified customers who ordered and received this item.</p>
-              {canReviewProduct && (
-                <button className="write-review-btn primary" onClick={() => setIsReviewModalOpen(true)}>
-                  <MessageSquarePlus size={15} />
-                  <span>Write the First Review</span>
-                </button>
-              )}
             </div>
           ) : (
             <>
@@ -672,96 +584,7 @@ export default function ProductDetails() {
           )}
         </section>
 
-        {/* Review Submission Modal */}
-        {isReviewModalOpen && (
-          <div className="review-modal-backdrop" onClick={() => !isSubmittingReview && setIsReviewModalOpen(false)}>
-            <div className="review-modal-card" onClick={(e) => e.stopPropagation()}>
-              <div className="review-modal-header">
-                <div>
-                  <h3>Write a Review</h3>
-                  <p>{product.name}</p>
-                </div>
-                <button
-                  className="review-modal-close"
-                  onClick={() => setIsReviewModalOpen(false)}
-                  disabled={isSubmittingReview}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmitReview} className="review-modal-form">
-                <div className="form-group-star">
-                  <label>Overall Rating</label>
-                  <div className="interactive-stars-row">
-                    {[1, 2, 3, 4, 5].map((starVal) => (
-                      <button
-                        type="button"
-                        key={starVal}
-                        className="star-input-btn"
-                        onClick={() => setNewReviewRating(starVal)}
-                      >
-                        <Star
-                          size={28}
-                          fill={starVal <= newReviewRating ? '#283A2E' : 'none'}
-                          color="#283A2E"
-                        />
-                      </button>
-                    ))}
-                    <span className="rating-feedback-hint">
-                      {newReviewRating === 5 && 'Outstanding!'}
-                      {newReviewRating === 4 && 'Very Good'}
-                      {newReviewRating === 3 && 'Average'}
-                      {newReviewRating === 2 && 'Below Expectation'}
-                      {newReviewRating === 1 && 'Poor Experience'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="form-group-review">
-                  <label>Your Feedback & Experience</label>
-                  <textarea
-                    rows={4}
-                    placeholder="Tell other shoppers what you loved about the fit, quality, material or shipping..."
-                    value={newReviewComment}
-                    onChange={(e) => setNewReviewComment(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="review-modal-actions">
-                  <button
-                    type="button"
-                    className="btn-review-cancel"
-                    onClick={() => setIsReviewModalOpen(false)}
-                    disabled={isSubmittingReview}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-review-submit"
-                    disabled={isSubmittingReview || !newReviewComment.trim()}
-                  >
-                    {isSubmittingReview ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        <span>Submitting…</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send size={15} />
-                        <span>Submit Review</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-

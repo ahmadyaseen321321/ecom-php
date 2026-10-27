@@ -89,6 +89,7 @@ export default function SellerDashboard() {
 
   // Collapsible sidebar — collapsed shows icon-only rail
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isChatOrderDetailsExpanded, setIsChatOrderDetailsExpanded] = useState(false);
 
   // KPI drill-down: which metric's analytics page is open ('aov' | 'orders' | 'revenue' | null)
   const [analyticsMetric, setAnalyticsMetric] = useState(null);
@@ -191,6 +192,7 @@ export default function SellerDashboard() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [chatFilter, setChatFilter] = useState('all');
+  const [conversationSearch, setConversationSearch] = useState('');
 
   // Load Dashboard Stats
   const loadStats = async (days = timeframeDays) => {
@@ -730,6 +732,7 @@ export default function SellerDashboard() {
           status: productData.status || 'active',
           image: productData.image || '',
           sku: productData.sku || '',
+          variants: productData.variants,
         });
         showToast('Product updated successfully');
       } else {
@@ -743,6 +746,7 @@ export default function SellerDashboard() {
           status: productData.status || 'active',
           image: productData.image || '',
           sku: productData.sku || '',
+          variants: productData.variants,
         });
         showToast('Product added successfully');
       }
@@ -1012,13 +1016,14 @@ export default function SellerDashboard() {
           onClick={() => setIsSidebarCollapsed((c) => !c)}
           aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!isSidebarCollapsed}
         >
           <ChevronLeft size={16} className={isSidebarCollapsed ? 'rotated' : ''} />
         </button>
       </aside>
 
       {/* ─── MAIN CONTENT ────────────────────────────────────────────── */}
-      <div className={`dashboard-main-area ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <div className={`dashboard-main-area ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${activeTab === 'messages' ? 'messages-layout' : ''}`}>
         {/* Top Header Bar */}
         <header className="dashboard-topbar">
           <div
@@ -1116,7 +1121,7 @@ export default function SellerDashboard() {
         </header>
 
         {/* Dashboard Scrollable Body */}
-        <main className="dashboard-body">
+        <main className={`dashboard-body ${activeTab === 'messages' ? 'messages-dashboard-body' : ''}`}>
           {activeTab === 'overview' && (
             <div className="overview-page-wrapper animate-fade-in">
               {/* KPI drill-down page — opens when a metric card is clicked */}
@@ -1416,6 +1421,8 @@ export default function SellerDashboard() {
                       <tr>
                         <th>ORDER ID</th>
                         <th>PRODUCT</th>
+                        <th>CUSTOMER</th>
+                        <th>PHONE</th>
                         <th>ORDER DATE</th>
                         <th>PRICE</th>
                         <th>PAYMENT</th>
@@ -1429,6 +1436,19 @@ export default function SellerDashboard() {
                           <tr key={ord.id || ord.order_id} onClick={() => { setSelectedSellerOrder(ord); setActiveTab('orders'); }} style={{ cursor: 'pointer' }}>
                             <td className="bold-id">#{ord.id || ord.order_id}</td>
                             <td>{orderProductLabel(ord)}</td>
+                            <td className="latest-order-customer">{ord.customer_name || ord.customerName || '—'}</td>
+                            <td>
+                              {ord.customer_phone ? (
+                                <a
+                                  className="latest-order-phone"
+                                  href={`tel:${ord.customer_phone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Phone size={14} />
+                                  {ord.customer_phone}
+                                </a>
+                              ) : '—'}
+                            </td>
                             <td>{formatOrderDate(ord.created_at || ord.date)}</td>
                             <td className="bold-price">Rs. {Number(ord.total_amount || ord.total || 0).toLocaleString()}</td>
                             <td>{ord.payment_method || '—'}</td>
@@ -1446,7 +1466,7 @@ export default function SellerDashboard() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={7} className="orders-empty-cell">
+                          <td colSpan={9} className="orders-empty-cell">
                             {isOrdersLoading ? 'Loading orders…' : 'No orders yet — new orders will appear here in real time.'}
                           </td>
                         </tr>
@@ -1626,7 +1646,23 @@ export default function SellerDashboard() {
               {/* Left Conversations Sidebar */}
               <div className="messages-sidebar-panel">
                 <div className="messages-header-top">
-                  <h2 className="messages-title">Order Messages</h2>
+                  <div className="messages-heading-row">
+                    <div>
+                      <h2 className="messages-title">Order Messages</h2>
+                      <p className="messages-subtitle">Stay in touch with your customers</p>
+                    </div>
+                    <span className="messages-total-count">{conversations.length}</span>
+                  </div>
+                  <label className="messages-search">
+                    <Search size={16} aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={conversationSearch}
+                      onChange={(e) => setConversationSearch(e.target.value)}
+                      placeholder="Search conversations"
+                      aria-label="Search conversations"
+                    />
+                  </label>
                   <div className="messages-filter-tabs">
                     <button 
                       className={`msg-tab-btn ${chatFilter === 'all' ? 'active' : ''}`}
@@ -1645,12 +1681,16 @@ export default function SellerDashboard() {
 
                 <div className="conversations-list-scroll">
                   {conversations.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '0.85rem' }}>
+                    <div className="messages-empty-state">
                       <MessageSquare size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
                       No order conversations yet
                     </div>
                   ) : (
-                    conversations.map((conv) => {
+                    conversations.filter((conv) => {
+                      const query = conversationSearch.trim().toLowerCase();
+                      return !query || [conv.name, conv.orderId, conv.preview]
+                        .some((value) => String(value || '').toLowerCase().includes(query));
+                    }).map((conv) => {
                       const isSelected = String(selectedConvId) === String(conv.id) || String(selectedConvId) === String(conv.orderId);
                       const orderCount = conv.orders ? conv.orders.length : 1;
                       const orderSubText = orderCount > 1 
@@ -1695,6 +1735,15 @@ export default function SellerDashboard() {
                         </div>
                       );
                     })
+                  )}
+                  {conversations.length > 0 && !conversations.some((conv) => {
+                    const query = conversationSearch.trim().toLowerCase();
+                    return !query || [conv.name, conv.orderId, conv.preview]
+                      .some((value) => String(value || '').toLowerCase().includes(query));
+                  }) && (
+                    <div className="messages-empty-state">
+                      No conversations match “{conversationSearch}”
+                    </div>
                   )}
                 </div>
               </div>
@@ -1778,6 +1827,16 @@ export default function SellerDashboard() {
                             </span>
                           </div>
                           <div className="banner-actions-right">
+                            <button
+                              type="button"
+                              className="btn-banner-action order-details-toggle"
+                              onClick={() => setIsChatOrderDetailsExpanded((expanded) => !expanded)}
+                              aria-expanded={isChatOrderDetailsExpanded}
+                              aria-label={`${isChatOrderDetailsExpanded ? 'Hide' : 'Show'} order details`}
+                            >
+                              <ChevronDown size={15} className={isChatOrderDetailsExpanded ? 'expanded' : ''} />
+                              <span>{isChatOrderDetailsExpanded ? 'Hide Details' : 'Order Details'}</span>
+                            </button>
                             <button 
                               className="btn-banner-action" 
                               onClick={() => {
@@ -1801,6 +1860,7 @@ export default function SellerDashboard() {
                           </div>
                         </div>
 
+                        <div className={`chat-order-extra-details ${isChatOrderDetailsExpanded ? 'expanded' : ''}`} aria-hidden={!isChatOrderDetailsExpanded}>
                         {/* Row 2: Date, Total, Customer Phone */}
                         <div className="banner-detail-row">
                           <span className="banner-info-item">
@@ -1864,6 +1924,7 @@ export default function SellerDashboard() {
                             })}
                           </div>
                         )}
+                        </div>
                       </div>
 
                       {/* Messages Body Scroll */}

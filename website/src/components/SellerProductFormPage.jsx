@@ -30,6 +30,33 @@ const SAMPLE_PRESET_IMAGES = [
   { label: 'Plant', url: 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=600&auto=format&fit=crop' }
 ];
 
+const EMPTY_VARIANTS = { colors: [], sizes: [], specifications: [] };
+
+function parseVariants(value) {
+  if (!value) return EMPTY_VARIANTS;
+  let variants = value;
+  if (typeof variants === 'string') {
+    try {
+      variants = JSON.parse(variants);
+    } catch {
+      return EMPTY_VARIANTS;
+    }
+  }
+  if (Array.isArray(variants)) {
+    return {
+      ...EMPTY_VARIANTS,
+      colors: variants.map((color) => typeof color === 'string' ? { name: color } : color)
+    };
+  }
+  return {
+    ...EMPTY_VARIANTS,
+    ...variants,
+    colors: Array.isArray(variants.colors) ? variants.colors : [],
+    sizes: Array.isArray(variants.sizes) ? variants.sizes : [],
+    specifications: Array.isArray(variants.specifications) ? variants.specifications : []
+  };
+}
+
 export default function SellerProductFormPage({
   product = null,
   categories = [],
@@ -56,6 +83,7 @@ export default function SellerProductFormPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customImageUrl, setCustomImageUrl] = useState('');
   const [activeTabPreview, setActiveTabPreview] = useState('editor');
+  const [variants, setVariants] = useState(EMPTY_VARIANTS);
 
   // Initialize data for edit mode
   useEffect(() => {
@@ -72,6 +100,7 @@ export default function SellerProductFormPage({
         image: product.main_image || product.image || '',
         tags: product.tags || 'Featured, Best Seller'
       });
+      setVariants(parseVariants(product.variants));
       if (product.main_image || product.image) {
         setCustomImageUrl(product.main_image || product.image);
       }
@@ -110,6 +139,10 @@ export default function SellerProductFormPage({
       showToast('Please enter a product title');
       return;
     }
+    if (!formData.description.trim()) {
+      showToast('Please add a product description');
+      return;
+    }
     if (!formData.price || parseFloat(formData.price) <= 0) {
       showToast('Please enter a valid regular price');
       return;
@@ -123,6 +156,15 @@ export default function SellerProductFormPage({
         discount_price: formData.discount_price ? parseFloat(formData.discount_price) : null,
         stock: parseInt(formData.stock) || 0,
         category_id: parseInt(formData.category_id) || 1,
+        variants: {
+          ...variants,
+          sizes: supportsSizes ? variants.sizes : [],
+          colors: variants.colors.filter((color) => color.name?.trim()).map((color) => ({
+            ...color,
+            name: color.name.trim()
+          })),
+          specifications: variants.specifications.filter((spec) => spec.name?.trim() && spec.value?.trim())
+        }
       });
     } catch (err) {
       console.error('Error saving product:', err);
@@ -139,6 +181,25 @@ export default function SellerProductFormPage({
   const currentStock = parseInt(formData.stock) || 0;
 
   const currentCategoryName = categories.find(c => String(c.id) === String(formData.category_id))?.name || 'Uncategorized';
+  const supportsSizes = /apparel|clothing|garment|fashion|footwear|shoe/i.test(currentCategoryName);
+
+  const updateVariant = (section, index, field, value) => {
+    setVariants((prev) => ({
+      ...prev,
+      [section]: prev[section].map((item, itemIndex) => (
+        itemIndex === index
+          ? (typeof item === 'string' ? value : { ...item, [field]: value })
+          : item
+      ))
+    }));
+  };
+
+  const addSpecification = () => {
+    setVariants((prev) => ({
+      ...prev,
+      specifications: [...prev.specifications, { name: '', value: '' }]
+    }));
+  };
 
   return (
     <div className="seller-product-form-page animate-fade-in">
@@ -242,16 +303,171 @@ export default function SellerProductFormPage({
               </div>
 
               <div className="form-group">
-                <label className="form-label">Full Product Description</label>
+                <label className="form-label">
+                  Full Product Description <span className="req">*</span>
+                </label>
                 <textarea
                   rows={5}
                   placeholder="Describe your product materials, fit, care instructions, warranty, and special features..."
                   className="form-textarea"
                   value={formData.description}
                   onChange={(e) => handleChange('description', e.target.value)}
+                  required
                 />
-                <span className="field-hint">A detailed description boosts buyer confidence and conversion rate.</span>
+                <span className="field-hint">Customers will see this description on the product page.</span>
               </div>
+            </div>
+          </div>
+
+          <div className="form-section-card">
+            <div className="card-header-row">
+              <div className="card-header-icon-title">
+                <Layers size={20} className="card-header-icon" />
+                <div>
+                  <h3 className="section-card-title">Product Variants & Specifications</h3>
+                  <p className="section-card-desc">Add only the options and details that apply to this product.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="variant-form-section">
+              <div className="variant-form-heading">
+                <div>
+                  <h4>Color variants</h4>
+                  <p>Optional. Add a color name and an optional color-specific image.</p>
+                </div>
+                <button type="button" className="variant-add-btn" onClick={() => setVariants((prev) => ({
+                  ...prev,
+                  colors: [...prev.colors, { name: '', image: '', imageFile: null, imagePreview: '' }]
+                }))}>
+                  <Plus size={15} /> Add color
+                </button>
+              </div>
+              {variants.colors.map((color, index) => (
+                <div className="variant-editor-row color-editor-row" key={`color-${index}`}>
+                  <input
+                    className="form-input"
+                    value={color.name || ''}
+                    placeholder="Color name (e.g. Navy)"
+                    onChange={(e) => updateVariant('colors', index, 'name', e.target.value)}
+                  />
+                  <input
+                    className="form-input"
+                    value={color.hex || ''}
+                    placeholder="Color code (optional, e.g. #1f2937)"
+                    onChange={(e) => updateVariant('colors', index, 'hex', e.target.value)}
+                  />
+                  <label className="variant-image-picker">
+                    {color.imagePreview || color.image ? (
+                      <img src={color.imagePreview || getImageUrl(color.image)} alt="" />
+                    ) : <ImageIcon size={17} />}
+                    <span>{color.imageFile ? 'Image added' : 'Add image'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setVariants((prev) => ({
+                            ...prev,
+                            colors: prev.colors.map((item, itemIndex) => itemIndex === index
+                              ? { ...item, imageFile: file, imagePreview: URL.createObjectURL(file) }
+                              : item)
+                          }));
+                        }
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="variant-remove-btn"
+                    aria-label="Remove color variant"
+                    onClick={() => setVariants((prev) => ({
+                      ...prev,
+                      colors: prev.colors.filter((_, itemIndex) => itemIndex !== index)
+                    }))}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {supportsSizes && (
+              <div className="variant-form-section">
+                <div className="variant-form-heading">
+                  <div>
+                    <h4>Available sizes</h4>
+                    <p>Optional. Sizes are shown for clothing, garments, footwear and apparel categories.</p>
+                  </div>
+                  <button type="button" className="variant-add-btn" onClick={() => setVariants((prev) => ({
+                    ...prev,
+                    sizes: [...prev.sizes, '']
+                  }))}>
+                    <Plus size={15} /> Add size
+                  </button>
+                </div>
+                {variants.sizes.map((size, index) => (
+                  <div className="variant-editor-row size-editor-row" key={`size-${index}`}>
+                    <input
+                      className="form-input"
+                      value={typeof size === 'string' ? size : size.name || ''}
+                      placeholder="Size (e.g. S, M, 42)"
+                      onChange={(e) => updateVariant('sizes', index, 'name', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="variant-remove-btn"
+                      aria-label="Remove size"
+                      onClick={() => setVariants((prev) => ({
+                        ...prev,
+                        sizes: prev.sizes.filter((_, itemIndex) => itemIndex !== index)
+                      }))}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="variant-form-section">
+              <div className="variant-form-heading">
+                <div>
+                  <h4>Specifications</h4>
+                  <p>Optional. Only specifications you add will appear to customers.</p>
+                </div>
+                <button type="button" className="variant-add-btn" onClick={addSpecification}>
+                  <Plus size={15} /> Add specification
+                </button>
+              </div>
+              {variants.specifications.map((spec, index) => (
+                <div className="variant-editor-row specification-editor-row" key={`spec-${index}`}>
+                  <input
+                    className="form-input"
+                    value={spec.name || ''}
+                    placeholder="Specification (e.g. Material)"
+                    onChange={(e) => updateVariant('specifications', index, 'name', e.target.value)}
+                  />
+                  <input
+                    className="form-input"
+                    value={spec.value || ''}
+                    placeholder="Value"
+                    onChange={(e) => updateVariant('specifications', index, 'value', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="variant-remove-btn"
+                    aria-label="Remove specification"
+                    onClick={() => setVariants((prev) => ({
+                      ...prev,
+                      specifications: prev.specifications.filter((_, itemIndex) => itemIndex !== index)
+                    }))}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 

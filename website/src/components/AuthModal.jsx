@@ -15,7 +15,13 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { loginUser, registerUser, verifyOtpApi, socialLoginApi } from '../services/api';
+import {
+  loginUser,
+  registerUser,
+  verifyOtpApi,
+  resendEmailVerificationApi,
+  socialLoginApi
+} from '../services/api';
 import { signInWithGoogle, signInWithFacebook } from '../services/socialAuth';
 import './AuthModal.css';
 
@@ -142,15 +148,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     resetForm();
   };
 
-  // Helper to mask phone number e.g. +1 (555) 000-0089 -> +1 (555) ••••89
-  const getMaskedPhone = () => {
-    if (!phone) return '+1 (555) ••••89';
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length >= 4) {
-      const lastFour = digits.slice(-2);
-      return `+1 (${digits.slice(0, 3) || '555'}) ••••${lastFour}`;
-    }
-    return phone;
+  const getMaskedEmail = () => {
+    const [name, domain] = email.split('@');
+    if (!name || !domain) return email;
+    return `${name.slice(0, 2)}${'*'.repeat(Math.max(2, name.length - 2))}@${domain}`;
   };
 
   // Handle Form Submission (Login or Signup transition to OTP)
@@ -197,9 +198,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
           password,
           role: 'user'
         };
-        // Call register API or prepare for OTP
-        await registerUser(userData);
-        // After signup form is submitted, show OTP verification screen!
+        const response = await registerUser(userData);
+        if (!response || response._failed || response._networkError) {
+          setError(response?.message || 'Unable to create account. Please try again.');
+          return;
+        }
         setMode('otp');
         setResendTimer(59);
         setOtp(['', '', '', '', '', '']);
@@ -259,19 +262,20 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
 
     setLoading(true);
     try {
-      const response = await verifyOtpApi(phone || email, fullCode);
-      if (response) {
-        const userObj = {
-          name: `${firstName} ${lastName}`.trim() || 'Jane Doe',
-          email: email || 'jane@example.com',
-          phone: phone || '+1 (555) 000-0000',
-          role: 'user'
-        };
-        login(userObj, 'mock-jwt-token');
-        if (showToast) showToast('Phone number verified & account created successfully!');
+      const verification = await verifyOtpApi(email, fullCode);
+      if (verification?._failed || verification?._networkError) {
+        setError(verification.message || 'Verification failed. Please try again.');
+        return;
+      }
+
+      const loginResponse = await loginUser(email, password);
+      if (loginResponse?.user && loginResponse?.token) {
+        login(loginResponse.user, loginResponse.token);
+        if (showToast) showToast('Email verified and account created successfully!');
         onClose();
       } else {
-        setError('Invalid OTP code. Please try again.');
+        setError(loginResponse?.message || 'Email verified. Please sign in to continue.');
+        setMode('login');
       }
     } catch (err) {
       setError('Verification failed. Please try again.');
@@ -280,12 +284,22 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (resendTimer > 0) return;
-    setResendTimer(59);
-    setOtp(['', '', '', '', '', '']);
     setError('');
-    if (showToast) showToast('A new OTP code has been sent!');
+    setLoading(true);
+    try {
+      const response = await resendEmailVerificationApi(email);
+      if (response?._failed || response?._networkError) {
+        setError(response.message || 'Unable to resend the verification code.');
+        return;
+      }
+      setResendTimer(59);
+      setOtp(['', '', '', '', '', '']);
+      if (showToast) showToast('A new verification code was sent to your email.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return createPortal(
@@ -635,8 +649,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
           {mode === 'otp' && (
             <div className="auth-card-box otp-layout">
               <div className="auth-header">
-                <h2>Verify Your Number</h2>
-                <p>We've sent a 6-digit code to {getMaskedPhone()}</p>
+                <h2>Verify Your Email</h2>
+                <p>We've sent a 6-digit code to {getMaskedEmail()}</p>
               </div>
 
               <form className="auth-form" onSubmit={handleOtpSubmit}>

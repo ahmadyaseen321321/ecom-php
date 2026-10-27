@@ -5,8 +5,9 @@ import {
   Star,
   ShoppingBag,
   Heart,
-  ChevronRight,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   ThumbsUp,
   Loader2,
   Check,
@@ -92,7 +93,9 @@ export default function ProductDetails() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
 
-  const isLiked = wishlist && wishlist.some((item) => String(item.id) === String(product.id));
+  const isLiked = wishlist?.some((item) =>
+    String(typeof item === 'object' && item !== null ? item.id ?? item.product_id : item) === String(product.id)
+  ) || false;
 
   // Load reviews from API whenever the selected product changes
   const selectedProductId = selectedProduct ? selectedProduct.id : null;
@@ -195,6 +198,14 @@ export default function ProductDetails() {
       : [product.image];
     return list.filter(Boolean).map(img => getImageUrl(img));
   }, [product]);
+  const selectedImageIndex = imagesList.indexOf(selectedImage);
+
+  const showAdjacentImage = (direction) => {
+    if (imagesList.length < 2) return;
+    const currentIndex = selectedImageIndex >= 0 ? selectedImageIndex : 0;
+    const nextIndex = (currentIndex + direction + imagesList.length) % imagesList.length;
+    setSelectedImage(imagesList[nextIndex]);
+  };
 
   return (
     <div className="product-details-page-wrapper">
@@ -202,6 +213,15 @@ export default function ProductDetails() {
         {/* Breadcrumb Navigation & Back */}
         <div className="details-breadcrumb-bar">
           <div className="breadcrumb-links-group">
+            <button
+              type="button"
+              className="product-back-btn"
+              onClick={() => navigateTo('shop')}
+              aria-label="Back to shop"
+              title="Back to shop"
+            >
+              <ArrowLeft size={18} />
+            </button>
             <button className="breadcrumb-nav-btn" onClick={() => navigateTo('home')}>Home</button>
             <span className="sep">›</span>
             <button className="breadcrumb-nav-btn" onClick={() => navigateTo('shop')}>{product.category || 'Apparel'}</button>
@@ -215,8 +235,9 @@ export default function ProductDetails() {
           </button>
         </div>
 
-        {/* Main Product Showcase Grid */}
-        <div className="product-showcase-grid">
+        <div className="product-overview-card">
+          {/* Main Product Showcase Grid */}
+          <div className="product-showcase-grid">
           {/* Gallery Column */}
           <div className="gallery-column">
             {imagesList.length > 1 && (
@@ -235,7 +256,28 @@ export default function ProductDetails() {
 
             <div className="main-display-box">
               <img src={selectedImage || imagesList[0]} alt={product.name} />
+              {imagesList.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="gallery-arrow gallery-arrow-previous"
+                    onClick={() => showAdjacentImage(-1)}
+                    aria-label="View previous image"
+                  >
+                    <ChevronLeft size={22} />
+                  </button>
+                  <button
+                    type="button"
+                    className="gallery-arrow gallery-arrow-next"
+                    onClick={() => showAdjacentImage(1)}
+                    aria-label="View next image"
+                  >
+                    <ChevronRight size={22} />
+                  </button>
+                </>
+              )}
               <button
+                type="button"
                 className={`product-wishlist-fav-btn ${isLiked ? 'active' : ''}`}
                 onClick={() => toggleWishlist(product)}
                 title={isLiked ? 'Remove from Wishlist' : 'Add to Wishlist'}
@@ -384,10 +426,10 @@ export default function ProductDetails() {
             </div>
 
           </div>
-        </div>
+          </div>
 
-        {/* Product Overview, Details & Specifications Section */}
-        <section className="product-details-tabs-section">
+          {/* Product Overview, Details & Specifications Section */}
+          <section className="product-details-tabs-section">
           <div className="product-tab-headers">
             {product.description?.trim() && (
               <button
@@ -452,7 +494,7 @@ export default function ProductDetails() {
               </div>
             )}
           </div>
-        </section>
+          </section>
 
         {/* Customer Reviews Section */}
         <section id="customer-reviews" className="customer-reviews-section">
@@ -583,6 +625,7 @@ export default function ProductDetails() {
             </>
           )}
         </section>
+        </div>
 
       </div>
     </div>

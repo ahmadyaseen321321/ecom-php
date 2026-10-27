@@ -22,11 +22,7 @@ export default function SeasonalArchive() {
         {/* Section Header */}
         <div className="section-header">
           <div>
-            <span className="section-tag">CURATED COLLECTION</span>
-            <h2 className="section-title font-serif">The Seasonal Archive</h2>
-            <p className="section-subtitle">
-              Thoughtfully curated collections designed for balance, longevity, and timeless relevance.
-            </p>
+            <h2 className="section-title">The Seasonal Archive</h2>
           </div>
           <a href="#discover-more" className="explore-link">
             Explore all collections <ArrowRight size={16} />

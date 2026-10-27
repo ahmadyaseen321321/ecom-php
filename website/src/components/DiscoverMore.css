@@ -1,5 +1,5 @@
 .discover-more-section {
-  padding: 60px 0;
+  padding: 32px 0 48px;
 }
 
 .text-center {
@@ -16,13 +16,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-bottom: 40px;
+  gap: 10px;
+  margin-bottom: 32px;
   flex-wrap: wrap;
 }
 
 .filter-pill {
-  padding: 10px 24px;
+  padding: 8px 18px;
   border-radius: var(--radius-full);
   background-color: #FFFFFF;
   border: 1px solid var(--color-border);
@@ -48,8 +48,8 @@
 
 .discover-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px;
 }
 
 .discover-card {
@@ -61,36 +61,34 @@
   display: flex;
   flex-direction: column;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(31, 45, 37, 0.08);
 }
 
 .discover-card:hover {
   transform: translateY(-5px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 12px 26px rgba(31, 45, 37, 0.15);
   border-color: var(--color-border-hover);
 }
 
 .discover-image-wrap {
   position: relative;
-  height: 270px;
-  background-color: var(--color-cream-card);
+  height: 285px;
+  background-color: #FFFFFF;
   overflow: hidden;
 }
 
 .discover-img {
+  display: block;
   width: 100%;
   height: 100%;
+  padding: 0;
   object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.discover-card:hover .discover-img {
-  transform: scale(1.06);
 }
 
 .discover-actions {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 10px;
+  right: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -98,8 +96,8 @@
 }
 
 .action-btn-circle {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
@@ -123,8 +121,8 @@
   right: 0;
   background: var(--color-forest);
   color: #FFFFFF;
-  padding: 12px;
-  font-size: 0.85rem;
+  padding: 10px;
+  font-size: 0.78rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -139,7 +137,7 @@
 }
 
 .discover-info {
-  padding: 16px;
+  padding: 13px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -155,7 +153,7 @@
 }
 
 .discover-item-name {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--color-text-main);
   white-space: nowrap;
@@ -171,7 +169,7 @@
 }
 
 .discover-item-price {
-  font-size: 1rem;
+  font-size: 0.96rem;
   font-weight: 800;
   color: var(--color-text-main);
 }
@@ -189,11 +187,21 @@
 
 @media (max-width: 1024px) {
   .discover-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 600px) {
+  .discover-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .discover-image-wrap {
+    height: 215px;
+  }
+}
+
+@media (max-width: 380px) {
   .discover-grid {
     grid-template-columns: 1fr;
   }

@@ -60,7 +60,7 @@
 }
 
 .promo-image-side {
-  height: 440px;
+  height: 340px;
   position: relative;
 }
 
@@ -75,7 +75,7 @@
 .promo-card.has-banner-bg {
   display: block;
   position: relative; /* anchors the full-bleed image layer inside the card */
-  min-height: 400px;
+  min-height: 340px;
   background-color: #355342;
 }
 
@@ -142,6 +142,9 @@
     margin: 0 auto 32px;
   }
   .promo-image-side {
-    height: 300px;
+    height: 240px;
+  }
+  .promo-card.has-banner-bg {
+    min-height: 280px;
   }
 }

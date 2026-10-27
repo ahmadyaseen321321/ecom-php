@@ -22,14 +22,14 @@ import {
   resendEmailVerificationApi,
   socialLoginApi
 } from '../services/api';
-import { signInWithGoogle, signInWithFacebook } from '../services/socialAuth';
+import { signInWithGoogle } from '../services/socialAuth';
 import './AuthModal.css';
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   // Mode can be: 'login' | 'signup' | 'otp'
   const [mode, setMode] = useState(initialMode || 'login');
   const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState(null); // 'google' | 'facebook' | null
+  const [socialLoading, setSocialLoading] = useState(null);
   const [error, setError] = useState('');
   const { login, navigateTo, showToast } = useCart();
 
@@ -53,31 +53,20 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeToMarketing, setAgreeToMarketing] = useState(false);
 
-  // Handle Social Login (Google / Facebook)
-  const handleSocialLogin = async (provider) => {
+  // Handle Google sign-in.
+  const handleGoogleLogin = async () => {
     // Guard: Google Client ID must be configured in Google Cloud Console
     // with http://localhost:5173 as an authorized origin before this works.
-    if (provider === 'google' && (!window.google?.accounts?.id)) {
+    if (!window.google?.accounts?.id) {
       setError('Google Sign-In is not configured yet. Please use email & password to login.');
       return;
     }
-    if (provider === 'facebook' && (!window.FB)) {
-      setError('Facebook Sign-In is not configured yet. Please use email & password to login.');
-      return;
-    }
 
-    setSocialLoading(provider);
+    setSocialLoading('google');
     setError('');
     try {
-      // Step 1: Authenticate with OAuth provider
-      let socialUser;
-      if (provider === 'google') {
-        socialUser = await signInWithGoogle();
-      } else {
-        socialUser = await signInWithFacebook();
-      }
+      const socialUser = await signInWithGoogle();
 
-      // Step 2: Send social user data to our backend
       const payload = {
         provider: socialUser.provider,
         email: socialUser.email,
@@ -94,14 +83,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         }
 
         login(res.user, res.token);
-        showToast(
-          provider === 'google' && mode === 'signup'
-            ? 'Google account created and signed in.'
-            : `Signed in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`
-        );
+        showToast(mode === 'signup' ? 'Google account created and signed in.' : 'Signed in with Google!');
         onClose();
       } else {
-        setError(res?.message || `Failed to sign in with ${provider}.`);
+        setError(res?.message || 'Failed to sign in with Google.');
       }
     } catch (err) {
       // Don't show error for user-cancelled actions
@@ -109,7 +94,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         setSocialLoading(null);
         return;
       }
-      setError(err?.message || `Failed to connect to ${provider}. Please try again.`);
+      setError(err?.message || 'Failed to connect to Google. Please try again.');
     } finally {
       setSocialLoading(null);
     }
@@ -452,7 +437,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
               </div>
 
               <div className="social-buttons-row">
-                <button type="button" className="social-btn google-btn" onClick={() => handleSocialLogin('google')} disabled={socialLoading}>
+                <button type="button" className="social-btn google-btn" onClick={handleGoogleLogin} disabled={socialLoading}>
                   {socialLoading === 'google' ? (
                     <Loader2 className="animate-spin" size={18} />
                   ) : (
@@ -464,16 +449,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                     </svg>
                   )}
                   <span>{socialLoading === 'google' ? 'Connecting...' : 'Google'}</span>
-                </button>
-                <button type="button" className="social-btn facebook-btn" onClick={() => handleSocialLogin('facebook')} disabled={socialLoading}>
-                  {socialLoading === 'facebook' ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : (
-                    <svg className="social-icon" viewBox="0 0 24 24" fill="#1877F2">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                  )}
-                  <span>{socialLoading === 'facebook' ? 'Connecting...' : 'Facebook'}</span>
                 </button>
               </div>
 
@@ -621,7 +596,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
               </div>
 
               <div className="social-buttons-row">
-                <button type="button" className="social-btn google-btn" onClick={() => handleSocialLogin('google')} disabled={socialLoading}>
+                <button type="button" className="social-btn google-btn" onClick={handleGoogleLogin} disabled={socialLoading}>
                   {socialLoading === 'google' ? (
                     <Loader2 className="animate-spin" size={18} />
                   ) : (
@@ -633,16 +608,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                     </svg>
                   )}
                   <span>{socialLoading === 'google' ? 'Connecting...' : 'Google'}</span>
-                </button>
-                <button type="button" className="social-btn facebook-btn" onClick={() => handleSocialLogin('facebook')} disabled={socialLoading}>
-                  {socialLoading === 'facebook' ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : (
-                    <svg className="social-icon" viewBox="0 0 24 24" fill="#1877F2">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                  )}
-                  <span>{socialLoading === 'facebook' ? 'Connecting...' : 'Facebook'}</span>
                 </button>
               </div>
 

@@ -44,8 +44,7 @@ if ($method == 'GET') {
                 p.category_id as item_category_id, p.stock as item_stock,
                 oi.price as item_price, oi.quantity as item_quantity,
                 pi.image_url as item_main_image,
-                r.rating as user_rating, r.comment as user_comment,
-                r.image_url as review_image, r.reply as seller_reply, r.replied_at
+                r.rating as user_rating, r.comment as user_comment
               FROM orders o
               JOIN users u ON o.user_id = u.id
               LEFT JOIN order_items oi ON oi.order_id = o.id
@@ -98,9 +97,6 @@ if ($method == 'GET') {
                 'main_image'   => $row['item_main_image'],
                 'user_rating'  => $row['user_rating'],
                 'user_comment' => $row['user_comment'],
-                'review_image' => $row['review_image'],
-                'seller_reply' => $row['seller_reply'],
-                'replied_at'   => $row['replied_at'],
             ];
         }
     }

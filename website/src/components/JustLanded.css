@@ -1,5 +1,5 @@
 .just-landed-section {
-  padding: 48px 0 64px;
+  padding: 24px 0 48px;
 }
 
 .just-landed-header {
@@ -20,106 +20,101 @@
   color: var(--color-text-muted);
 }
 
-.carousel-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.control-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: #FFFFFF;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-main);
-  transition: var(--transition-fast);
-  box-shadow: var(--shadow-sm);
-}
-
-.control-btn:hover {
-  background-color: var(--color-forest);
-  color: #FFFFFF;
-  border-color: var(--color-forest);
-  transform: scale(1.05);
-}
-
-.slider-container {
-  display: flex;
-  gap: 20px;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  padding-bottom: 24px;
-  scrollbar-width: none;
-}
-
-.slider-container::-webkit-scrollbar {
-  display: none;
+.landed-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .landed-card {
-  min-width: 268px;
-  max-width: 268px;
-  flex: 0 0 auto;
+  min-width: 0;
   background: #FFFFFF;
   border-radius: 18px;
   border: 1px solid var(--color-border);
   overflow: hidden;
   transition: var(--transition-normal);
+  box-shadow: 0 4px 14px rgba(31, 45, 37, 0.08);
 }
 
 .landed-card:hover {
   transform: translateY(-5px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 12px 26px rgba(31, 45, 37, 0.15);
 }
 
 .landed-image-wrap {
   position: relative;
-  height: 270px;
-  background: #F7F5F0;
+  height: 275px;
+  background: #FFFFFF;
   overflow: hidden;
 }
 
 .landed-img {
+  display: block;
   width: 100%;
   height: 100%;
+  padding: 0;
   object-fit: cover;
-  transition: transform 0.5s ease;
 }
 
-.landed-card:hover .landed-img {
-  transform: scale(1.06);
-}
-
-.quick-view-btn {
+.landed-floating-actions {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -40%);
-  opacity: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  color: var(--color-forest);
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
-  font-size: 0.78rem;
-  font-weight: 700;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2;
+}
+
+.landed-action-circle {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--color-text-main);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-fast);
+}
+
+.landed-action-circle:hover,
+.landed-action-circle.active {
+  background: var(--color-forest);
+  color: #fff;
+}
+
+.landed-add-to-cart-btn {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition: var(--transition-normal);
+  justify-content: center;
+  gap: 8px;
+  padding: 11px;
+  border: 0;
+  background: var(--color-forest);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
 }
 
-.landed-card:hover .quick-view-btn {
-  opacity: 1;
-  transform: translate(-50%, -50%);
+.landed-card:hover .landed-add-to-cart-btn,
+.landed-add-to-cart-btn:focus-visible {
+  transform: translateY(0);
 }
 
 .landed-info {
-  padding: 16px;
+  padding: 13px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -134,7 +129,7 @@
 }
 
 .landed-name {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--color-text-main);
   white-space: nowrap;
@@ -151,29 +146,34 @@
 
 .landed-price {
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 0.96rem;
   color: var(--color-text-main);
-}
-
-.add-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-sage-tint);
-  color: var(--color-forest);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition-fast);
-}
-
-.add-btn:hover {
-  background: var(--color-forest);
-  color: #FFFFFF;
 }
 
 .center-cta-wrap {
   display: flex;
   justify-content: center;
   margin-top: 40px;
+}
+
+@media (max-width: 1024px) {
+  .landed-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .landed-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .landed-image-wrap {
+    height: 220px;
+  }
+}
+
+@media (max-width: 380px) {
+  .landed-grid {
+    grid-template-columns: 1fr;
+  }
 }

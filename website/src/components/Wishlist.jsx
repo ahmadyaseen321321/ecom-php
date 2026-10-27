@@ -14,7 +14,6 @@ export default function Wishlist() {
 
   const handleRemove = (itemId) => {
     toggleWishlist(itemId);
-    showToast('Item removed from Wishlist');
   };
 
   const moveAllToCart = () => {
@@ -201,46 +200,6 @@ export default function Wishlist() {
         )}
       </div>
 
-      {/* Footer matching wishlist design mockup */}
-      <footer className="wishlist-page-footer">
-        <div className="container">
-          <div className="footer-cols-grid">
-            <div className="footer-brand-col">
-              <h3>mystore</h3>
-              <p>Curated minimalist essentials for the modern lifestyle. Quality and sustainability at our core.</p>
-            </div>
-
-            <div className="footer-links-col">
-              <h4>Shop</h4>
-              <a href="#">All Products</a>
-              <a href="#">New Arrivals</a>
-              <a href="#">Best Sellers</a>
-              <a href="#">Sale</a>
-            </div>
-
-            <div className="footer-links-col">
-              <h4>Support</h4>
-              <a href="#">Contact Us</a>
-              <a href="#">Shipping Info</a>
-              <a href="#">Returns & Exchanges</a>
-              <a href="#">FAQs</a>
-            </div>
-
-            <div className="footer-links-col">
-              <h4>Connect</h4>
-              <p className="newsletter-sub-text">Join our newsletter for exclusive updates.</p>
-            </div>
-          </div>
-
-          <div className="footer-bottom-copy">
-            <span>© 2024 mystore. All rights reserved.</span>
-            <div className="legal-links">
-              <a href="#">Privacy Policy</a>
-              <a href="#">Terms of Service</a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

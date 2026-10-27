@@ -126,8 +126,8 @@
 .hero-card.has-banner-bg {
   display: flex;
   align-items: center;
-  min-height: 380px;
-  aspect-ratio: 3 / 1;
+  min-height: 270px;
+  aspect-ratio: 4.5 / 1;
 }
 
 .hero-card.has-banner-bg .hero-content {

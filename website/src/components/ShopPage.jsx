@@ -190,6 +190,8 @@ export default function ShopPage() {
             <div className="shop-products-grid">
               {paginatedProducts.map((product) => {
                 const isWishlisted = wishlist.includes(product.id);
+                const productRating = Number(product.rating) || 0;
+                const reviewCount = Number(product.reviewsCount ?? product.reviews_count) || 0;
                 return (
                   <div
                     key={product.id}
@@ -251,12 +253,12 @@ export default function ShopPage() {
                             <Star
                               key={i}
                               size={12}
-                              fill={i < Math.floor(product.rating || 5) ? '#D4AF37' : '#E2E8F0'}
-                              color={i < Math.floor(product.rating || 5) ? '#D4AF37' : '#E2E8F0'}
+                              fill={reviewCount > 0 && i < Math.floor(productRating) ? '#D4AF37' : '#E2E8F0'}
+                              color={reviewCount > 0 && i < Math.floor(productRating) ? '#D4AF37' : '#E2E8F0'}
                             />
                           ))}
                         </div>
-                        <span className="reviews-count">({product.reviewsCount || 0})</span>
+                        <span className="reviews-count">({reviewCount})</span>
                       </div>
                     </div>
                   </div>

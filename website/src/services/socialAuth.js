@@ -1,8 +1,8 @@
 /**
  * Social Authentication Utilities
- * Wraps Google Identity Services and Facebook SDK for one-click login.
+ * Wraps Google Identity Services for one-click login.
  */
-import { GOOGLE_CLIENT_ID, FACEBOOK_APP_ID } from '../config/socialAuth';
+import { GOOGLE_CLIENT_ID } from '../config/socialAuth';
 
 // ─── Google Sign-In ────────────────────────────────────────────────
 /**
@@ -57,51 +57,5 @@ export function signInWithGoogle() {
         reject(new Error('Google sign-in was cancelled.'));
       }
     });
-  });
-}
-
-// ─── Facebook Sign-In ──────────────────────────────────────────────
-/**
- * Trigger Facebook Login popup.
- * Returns a Promise that resolves with { email, name, id (provider_id), picture }.
- */
-export function signInWithFacebook() {
-  return new Promise((resolve, reject) => {
-    if (!window.FB) {
-      reject(new Error('Facebook SDK not loaded. Please refresh and try again.'));
-      return;
-    }
-
-    // Re-init FB in case the appId was set late
-    window.FB.init({
-      appId: FACEBOOK_APP_ID,
-      cookie: true,
-      xfbml: false,
-      version: 'v19.0',
-    });
-
-    window.FB.login(
-      (loginResponse) => {
-        if (loginResponse.status === 'connected') {
-          // Fetch user profile
-          window.FB.api('/me', { fields: 'id,name,email,picture.type(large)' }, (profile) => {
-            if (profile && !profile.error) {
-              resolve({
-                provider: 'facebook',
-                email: profile.email || `${profile.id}@facebook.com`,
-                name: profile.name || 'Facebook User',
-                provider_id: profile.id,
-                picture: profile.picture?.data?.url || null,
-              });
-            } else {
-              reject(new Error(profile?.error?.message || 'Failed to retrieve Facebook profile.'));
-            }
-          });
-        } else {
-          reject(new Error('Facebook login was cancelled or failed.'));
-        }
-      },
-      { scope: 'email,public_profile' }
-    );
   });
 }

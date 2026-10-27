@@ -8,7 +8,7 @@ export default function Testimonials() {
     <section id="testimonials" className="testimonials-section">
       <div className="container">
         <div className="testimonials-header text-center">
-          <h2 className="testimonials-title font-serif">What Our Community Says</h2>
+          <h2 className="testimonials-title">What Our Community Says</h2>
           <p className="testimonials-subtitle">
             Real stories from our customer community on sustainable luxury and everyday quality.
           </p>

@@ -132,7 +132,9 @@ export default function SellerDashboard() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const PRODUCTS_PER_PAGE = 10;
+  const [productsPerPage, setProductsPerPage] = useState(10);
+  const [selectedProductIds, setSelectedProductIds] = useState(() => new Set());
+  const selectAllProductsRef = useRef(null);
 
   // Add/Edit Product State
   const [showAddProductView, setShowAddProductView] = useState(false);
@@ -731,6 +733,7 @@ export default function SellerDashboard() {
           category_id: parseInt(productData.category_id),
           status: productData.status || 'active',
           image: productData.image || '',
+          imageFile: productData.imageFile,
           sku: productData.sku || '',
           variants: productData.variants,
         });
@@ -745,6 +748,7 @@ export default function SellerDashboard() {
           category_id: parseInt(productData.category_id),
           status: productData.status || 'active',
           image: productData.image || '',
+          imageFile: productData.imageFile,
           sku: productData.sku || '',
           variants: productData.variants,
         });
@@ -780,8 +784,47 @@ export default function SellerDashboard() {
     return list;
   }, [sellerProducts, productSearchQuery, categoryFilter, stockFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * PRODUCTS_PER_PAGE, currentPage * PRODUCTS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage);
+  const selectedFilteredProductCount = filteredProducts.filter((product) =>
+    selectedProductIds.has(String(product.id))
+  ).length;
+  const areAllFilteredProductsSelected = filteredProducts.length > 0
+    && selectedFilteredProductCount === filteredProducts.length;
+
+  useEffect(() => {
+    if (selectAllProductsRef.current) {
+      selectAllProductsRef.current.indeterminate = selectedFilteredProductCount > 0
+        && !areAllFilteredProductsSelected;
+    }
+  }, [selectedFilteredProductCount, areAllFilteredProductsSelected]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const handleSelectAllFilteredProducts = (event) => {
+    const filteredIds = filteredProducts.map((product) => String(product.id));
+    setSelectedProductIds((previous) => {
+      const next = new Set(previous);
+      if (event.target.checked) {
+        filteredIds.forEach((id) => next.add(id));
+      } else {
+        filteredIds.forEach((id) => next.delete(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSelectProduct = (productId, checked) => {
+    const id = String(productId);
+    setSelectedProductIds((previous) => {
+      const next = new Set(previous);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
 
   const getStockInfo = (stock) => {
     const s = parseInt(stock) || 0;
@@ -1536,6 +1579,11 @@ export default function SellerDashboard() {
                   </div>
 
                   <div className="filter-actions-group">
+                    {selectedProductIds.size > 0 && (
+                      <span className="selected-products-count">
+                        {selectedProductIds.size} selected
+                      </span>
+                    )}
                     <select className="filter-dropdown" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}>
                       <option value="all">All Categories</option>
                       {categories.map(c => (
@@ -1562,7 +1610,16 @@ export default function SellerDashboard() {
                   <table className="seller-products-table">
                     <thead>
                       <tr>
-                        <th className="check-col"><input type="checkbox" /></th>
+                        <th className="check-col">
+                          <input
+                            ref={selectAllProductsRef}
+                            type="checkbox"
+                            checked={areAllFilteredProductsSelected}
+                            onChange={handleSelectAllFilteredProducts}
+                            aria-label="Select all filtered products"
+                            title="Select all filtered products across pages"
+                          />
+                        </th>
                         <th>PRODUCT</th>
                         <th>SKU</th>
                         <th>PRICE</th>
@@ -1582,7 +1639,14 @@ export default function SellerDashboard() {
                         const imgSrc = prod.main_image ? getImageUrl(prod.main_image) : 'https://placehold.co/60x60?text=No+Img';
                         return (
                           <tr key={prod.id}>
-                            <td className="check-col"><input type="checkbox" /></td>
+                            <td className="check-col">
+                              <input
+                                type="checkbox"
+                                checked={selectedProductIds.has(String(prod.id))}
+                                onChange={(e) => handleSelectProduct(prod.id, e.target.checked)}
+                                aria-label={`Select ${prod.name}`}
+                              />
+                            </td>
                             <td>
                               <div className="table-product-cell">
                                 <div className="product-img-wrap">
@@ -1624,9 +1688,26 @@ export default function SellerDashboard() {
 
                 {/* Pagination Footer */}
                 <div className="products-table-pagination">
-                  <span className="entries-count-text">
-                    Showing {filteredProducts.length === 0 ? 0 : (currentPage - 1) * PRODUCTS_PER_PAGE + 1} to {Math.min(currentPage * PRODUCTS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length} entries
-                  </span>
+                  <div className="products-pagination-info">
+                    <span className="entries-count-text">
+                      Showing {filteredProducts.length === 0 ? 0 : (currentPage - 1) * productsPerPage + 1} to {Math.min(currentPage * productsPerPage, filteredProducts.length)} of {filteredProducts.length} entries
+                    </span>
+                    <label className="products-page-size-control">
+                      <span>Show</span>
+                      <select
+                        value={productsPerPage}
+                        onChange={(e) => {
+                          setProductsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        aria-label="Products per page"
+                      >
+                        {[10, 50, 80].map((pageSize) => (
+                          <option key={pageSize} value={pageSize}>First {pageSize}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                   <div className="pagination-pills-row">
                     <button className="pagi-arrow" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}><ChevronLeft size={16} /></button>
                     {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(num => (

@@ -47,6 +47,50 @@ if ($method === 'POST' && isset($requestParams['_method'])) {
 $id = isset($requestParams['id']) ? (int) $requestParams['id'] : 0;
 $source = isset($requestParams['source']) ? $requestParams['source'] : '';
 
+function validateSquareProductImageUploads($files)
+{
+    $temporaryFiles = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
+    $uploadErrors = is_array($files['error']) ? $files['error'] : [$files['error']];
+
+    foreach ($temporaryFiles as $index => $temporaryFile) {
+        $uploadError = $uploadErrors[$index] ?? UPLOAD_ERR_NO_FILE;
+        if ($uploadError === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+        if ($uploadError !== UPLOAD_ERR_OK || !$temporaryFile) {
+            return "Could not read an uploaded product image.";
+        }
+
+        $imageInfo = @getimagesize($temporaryFile);
+        if (!$imageInfo) {
+            return "Uploaded product files must be valid images.";
+        }
+
+        $width = (int) $imageInfo[0];
+        $height = (int) $imageInfo[1];
+        if (abs($width - $height) > max($width, $height) * 0.01) {
+            return "Product images must be square with a 1:1 aspect ratio. Uploaded image is {$width}x{$height}px.";
+        }
+    }
+
+    return null;
+}
+
+if (in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
+    foreach (['images', 'new_images', 'variant_images'] as $imageField) {
+        if (!isset($_FILES[$imageField])) {
+            continue;
+        }
+
+        $imageError = validateSquareProductImageUploads($_FILES[$imageField]);
+        if ($imageError !== null) {
+            http_response_code(400);
+            echo json_encode(["status" => "error", "message" => $imageError]);
+            exit();
+        }
+    }
+}
+
 // ---------------------------------------------------------
 // ROUTE 1: GET (Fetch Products)
 // ---------------------------------------------------------

@@ -32,6 +32,30 @@ const SAMPLE_PRESET_IMAGES = [
 
 const EMPTY_VARIANTS = { colors: [], sizes: [], specifications: [] };
 
+function validateSquareImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const previewUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(previewUrl);
+      const { naturalWidth: width, naturalHeight: height } = image;
+      if (Math.abs(width - height) > Math.max(width, height) * 0.01) {
+        reject(new Error(`Product images must be square (1:1). This image is ${width}×${height}px.`));
+        return;
+      }
+      resolve();
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(previewUrl);
+      reject(new Error('Could not read the selected image.'));
+    };
+
+    image.src = previewUrl;
+  });
+}
+
 function parseVariants(value) {
   if (!value) return EMPTY_VARIANTS;
   let variants = value;
@@ -123,13 +147,21 @@ export default function SellerProductFormPage({
     showToast('Image selected');
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const handleFileUpload = async (e) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      await validateSquareImageFile(file);
       const previewUrl = URL.createObjectURL(file);
       setFormData(prev => ({ ...prev, image: previewUrl, imageFile: file }));
       setCustomImageUrl(previewUrl);
-      showToast('Image uploaded');
+      showToast('Square product image uploaded');
+    } catch (error) {
+      showToast(error.message || 'Please upload a square 1:1 product image.', 'error');
+    } finally {
+      input.value = '';
     }
   };
 
@@ -334,7 +366,7 @@ export default function SellerProductFormPage({
               <div className="variant-form-heading">
                 <div>
                   <h4>Color variants</h4>
-                  <p>Optional. Add a color name and an optional color-specific image.</p>
+                  <p>Optional. Add a color name and an optional square 1:1 color image.</p>
                 </div>
                 <button type="button" className="variant-add-btn" onClick={() => setVariants((prev) => ({
                   ...prev,
@@ -365,15 +397,23 @@ export default function SellerProductFormPage({
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
+                        const input = e.currentTarget;
                         const file = e.target.files?.[0];
-                        if (file) {
+                        if (!file) return;
+                        try {
+                          await validateSquareImageFile(file);
                           setVariants((prev) => ({
                             ...prev,
                             colors: prev.colors.map((item, itemIndex) => itemIndex === index
                               ? { ...item, imageFile: file, imagePreview: URL.createObjectURL(file) }
                               : item)
                           }));
+                          showToast('Square color image uploaded');
+                        } catch (error) {
+                          showToast(error.message || 'Please upload a square 1:1 color image.', 'error');
+                        } finally {
+                          input.value = '';
                         }
                       }}
                     />
@@ -539,7 +579,7 @@ export default function SellerProductFormPage({
                     />
                     <Upload size={22} className="upload-icon" />
                     <span className="upload-main-text">Upload from computer</span>
-                    <span className="upload-sub-text">PNG, JPG, WEBP up to 5MB</span>
+                    <span className="upload-sub-text">Square 1:1 PNG, JPG, or WEBP up to 5MB</span>
                   </label>
                 </div>
               </div>

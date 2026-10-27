@@ -53,7 +53,7 @@ export default function DiscoverMore() {
   return (
     <section id="discover-more" className="discover-more-section">
       <div className="container">
-        <h2 className="discover-title font-serif text-center">Discover More</h2>
+        <h2 className="discover-title text-center">Discover More</h2>
 
         {/* Filter Pills */}
         <div className="filter-tabs">

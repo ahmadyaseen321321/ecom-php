@@ -95,7 +95,12 @@ export const CartProvider = ({ children }) => {
   const [wishlist, setWishlist] = useState(() => {
     try {
       const saved = localStorage.getItem('wishlist');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed)
+        ? parsed
+            .map((item) => String(typeof item === 'object' && item !== null ? item.id ?? item.product_id ?? '' : item))
+            .filter((id) => id && id !== '[object Object]')
+        : [];
     } catch {
       return [];
     }
@@ -183,8 +188,10 @@ export const CartProvider = ({ children }) => {
           if (res) {
             const list = Array.isArray(res) ? res : (res.data || res.items || []);
             if (Array.isArray(list)) {
-              const ids = list.map((item) => String(typeof item === 'object' ? (item.product_id || item.id || item.productId) : item));
-              setWishlist((prev) => Array.from(new Set([...prev, ...ids])));
+              const ids = list
+                .map((item) => String(typeof item === 'object' ? (item.product_id ?? item.id ?? item.productId ?? '') : item))
+                .filter(Boolean);
+              setWishlist(Array.from(new Set(ids)));
             }
           }
         } catch (err) {
@@ -403,26 +410,50 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  const toggleWishlist = async (productId) => {
+  const toggleWishlist = async (product) => {
+    const productId = typeof product === 'object' && product !== null
+      ? product.id ?? product.product_id
+      : product;
+    if (productId === undefined || productId === null || String(productId).trim() === '') {
+      showToast('Unable to update wishlist: product ID is missing.');
+      return;
+    }
+
+    if (!localStorage.getItem('token')) {
+      showToast('Please log in to save items to your wishlist.');
+      openLoginModal();
+      return;
+    }
+
     const pIdStr = String(productId);
-    const isInWishlist = wishlist.includes(pIdStr) || wishlist.includes(productId);
+    const isInWishlist = wishlist.some((id) => String(id) === pIdStr);
 
     // Optimistic UI update for instantaneous responsiveness
     if (isInWishlist) {
       setWishlist((prev) => prev.filter((id) => String(id) !== pIdStr));
-      showToast('Removed from Wishlist');
       try {
-        await removeFromWishlistApi(productId);
+        const result = await removeFromWishlistApi(productId);
+        if (!result || result.status === 'error') {
+          throw new Error(result?.message || 'Could not remove this item from your wishlist.');
+        }
+        showToast('Removed from Wishlist');
       } catch (err) {
         console.error('Failed to sync wishlist removal with backend:', err);
+        setWishlist((prev) => prev.some((id) => String(id) === pIdStr) ? prev : [...prev, pIdStr]);
+        showToast(err.message || 'Could not remove this item from your wishlist.');
       }
     } else {
       setWishlist((prev) => [...prev, pIdStr]);
-      showToast('Saved to Wishlist');
       try {
-        await addToWishlistApi(productId);
+        const result = await addToWishlistApi(productId);
+        if (!result || result.status === 'error') {
+          throw new Error(result?.message || 'Could not save this item to your wishlist.');
+        }
+        showToast('Saved to Wishlist');
       } catch (err) {
         console.error('Failed to sync wishlist addition with backend:', err);
+        setWishlist((prev) => prev.filter((id) => String(id) !== pIdStr));
+        showToast(err.message || 'Could not save this item to your wishlist.');
       }
     }
   };

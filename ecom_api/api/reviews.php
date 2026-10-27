@@ -165,13 +165,14 @@ if ($method == 'GET') {
                 }
             }
 
-            $query = "INSERT INTO reviews (user_id, product_id, rating, comment, image_url) VALUES (:user_id, :product_id, :rating, :comment, :image_url)";
+            $images = $image_url ? json_encode([$image_url]) : null;
+            $query = "INSERT INTO reviews (user_id, product_id, rating, comment, images) VALUES (:user_id, :product_id, :rating, :comment, :images)";
             $stmt = $db->prepare($query);
             $stmt->bindParam(':user_id', $userId);
             $stmt->bindParam(':product_id', $product_id);
             $stmt->bindParam(':rating', $rating);
             $stmt->bindParam(':comment', $comment);
-            $stmt->bindParam(':image_url', $image_url);
+            $stmt->bindParam(':images', $images);
 
             if ($stmt->execute()) {
                 header("Content-Type: application/json; charset=UTF-8");

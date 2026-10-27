@@ -77,6 +77,10 @@ export default function OrdersPage() {
   const [orderTracking, setOrderTracking] = useState(null);
   const [trackRefreshing, setTrackRefreshing] = useState(false);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const refreshTracking = async () => {
     const id = selectedOrderDetails?.id;
     if (!id) return null;
@@ -388,12 +392,14 @@ export default function OrdersPage() {
 
   const handleOpenReviewModal = (order, e) => {
     if (e) e.stopPropagation();
-    setReviewingOrder(order);
     const items = Array.isArray(order.items) ? order.items : [];
     const eligibleItems = items.filter((item) => !item.user_rating);
-    if (eligibleItems.length > 0) {
-      setSelectedProductToReview(eligibleItems[0]);
+    if (eligibleItems.length === 0) {
+      showToast('There are no products left to review in this order.');
+      return;
     }
+    setReviewingOrder(order);
+    setSelectedProductToReview(eligibleItems[0]);
     setReviewRating(5);
     setReviewComment('');
   };
@@ -408,10 +414,30 @@ export default function OrdersPage() {
     e.preventDefault();
     if (!reviewComment.trim()) return;
 
+    const productId = selectedProductToReview?.id ?? selectedProductToReview?.product_id;
+    if (!productId) {
+      showToast('Please select a product to review.');
+      return;
+    }
+
     setSubmittingReview(true);
     try {
-      const pId = selectedProductToReview?.id || 1;
-      await addReviewApi(pId, reviewRating, reviewComment);
+      await addReviewApi(productId, reviewRating, reviewComment.trim());
+      const updatedOrders = orders.map((order) => {
+        if (String(order.id) !== String(reviewingOrder?.id)) return order;
+        return {
+          ...order,
+          items: (Array.isArray(order.items) ? order.items : []).map((item) =>
+            String(item.id ?? item.product_id) === String(productId)
+              ? { ...item, user_rating: reviewRating, user_comment: reviewComment.trim() }
+              : item
+          ),
+        };
+      });
+      setOrders(updatedOrders);
+      try {
+        localStorage.setItem('orders_cache', JSON.stringify(updatedOrders));
+      } catch {}
       showToast('Thank you! Review submitted successfully.');
       handleCloseReviewModal();
     } catch (err) {
@@ -724,22 +750,6 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="orders-page-footer">
-          <div className="footer-content">
-            <span className="footer-logo">Novanest</span>
-            <div className="footer-nav-links">
-              <a href="#">Sustainability Report</a>
-              <a href="#">Shipping Policy</a>
-              <a href="#">Returns</a>
-              <a href="#">Contact Us</a>
-              <a href="#">Privacy</a>
-            </div>
-            <span className="footer-copyright">
-              © 2024 Novanest. Consciously crafted for a better tomorrow.
-            </span>
-          </div>
-        </footer>
       </div>
     );
   }
@@ -848,6 +858,7 @@ export default function OrdersPage() {
             {filteredOrders.map((order) => {
               const firstItem = order.items && order.items.length > 0 ? order.items[0] : null;
               const firstItemImage = firstItem?.main_image || firstItem?.image || firstItem?.image_url;
+              const orderDisplayId = order.id ?? order.order_id ?? order.orderId ?? order.order_number;
               const orderTotal = Number(order.total ?? order.total_amount ?? order.total_price ?? 0);
               const rawStatus = (order.status || order.order_status || 'processing').trim();
               const statusLower = rawStatus.toLowerCase();
@@ -856,12 +867,21 @@ export default function OrdersPage() {
               const isInTransit = statusLower.includes('transit') || statusLower.includes('shipped');
               const isProcessing = statusLower.includes('processing') || statusLower.includes('pending') || statusLower.includes('confirmed') || statusLower.includes('paid') || statusLower.includes('hold');
               const isCancelled = statusLower.includes('cancel') || statusLower.includes('fail') || statusLower.includes('refund');
+              const orderUpdateTone = isDelivered
+                ? 'delivered'
+                : isInTransit
+                  ? 'transit'
+                  : statusLower.includes('pending')
+                    ? 'pending'
+                    : statusLower.includes('hold')
+                      ? 'on-hold'
+                      : 'processing';
 
               return (
                 <div key={order.id} className="history-order-card">
                   <div className="card-top-row">
                     <div className="card-order-meta-col">
-                      <span className="order-number-tag">ORDER #{order.id}</span>
+                      <span className="history-order-number">Order #{orderDisplayId}</span>
                       <span className="order-date">
                         {new Date(order.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
@@ -881,12 +901,30 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
+                  {!isCancelled && (
+                    <div className={`card-order-update card-order-update-${orderUpdateTone}`}>
+                      <Package size={17} aria-hidden="true" />
+                      <div>
+                        <span className="card-order-update-label">ORDER UPDATE</span>
+                        <p>
+                          {isDelivered
+                            ? 'Your order has been delivered.'
+                            : isInTransit
+                              ? 'Your order is on the way.'
+                              : statusLower.includes('pending')
+                                ? 'Payment is pending for this order.'
+                                : statusLower.includes('hold')
+                                  ? 'Your order is on hold.'
+                                  : 'Your order is still processing.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {isCancelled && (
                     <div className="card-cancellation-banner">
                       <span className="card-cancel-label">Reason:</span>
-                      <span className="card-cancel-reason">
-                        "{order.cancellation_reason || 'Order cancelled'}"
-                      </span>
+                      <span className="card-cancel-reason">{order.cancellation_reason || 'Order cancelled'}</span>
                     </div>
                   )}
 
@@ -977,8 +1015,11 @@ export default function OrdersPage() {
 
       {/* Review Modal for Delivered Orders */}
       {reviewingOrder && (
-        <div className="order-review-modal-backdrop animate-fade-in">
-          <div className="order-review-modal-card">
+        <div
+          className="order-review-modal-backdrop animate-fade-in"
+          onClick={handleCloseReviewModal}
+        >
+          <div className="order-review-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-bar">
               <div>
                 <h3>Write Product Review</h3>
@@ -1076,22 +1117,6 @@ export default function OrdersPage() {
         loading={cancellingLoading}
       />
 
-      {/* Footer */}
-      <footer className="orders-page-footer">
-        <div className="footer-content">
-          <span className="footer-logo">Novanest</span>
-          <div className="footer-nav-links">
-            <a href="#">Sustainability Report</a>
-            <a href="#">Shipping Policy</a>
-            <a href="#">Returns</a>
-            <a href="#">Contact Us</a>
-            <a href="#">Privacy</a>
-          </div>
-          <span className="footer-copyright">
-            © 2024 Novanest. Consciously crafted for a better tomorrow.
-          </span>
-        </div>
-      </footer>
     </div>
   );
 }
